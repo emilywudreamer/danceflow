@@ -380,7 +380,9 @@ const Scoring = {
       effectiveDuration: Math.round(effectiveDuration * 10) / 10,
       teacherDuration: Math.round(teacherDuration * 10) / 10,
       studentDuration: Math.round(studentDuration * 10) / 10,
-      pairCount: mappedPairs.length
+      pairCount: mappedPairs.length,
+      // Frame mapping: [[teacherTs, studentTs], ...] for skeleton/keyframe use
+      frameMapping: mappedPairs.map(p => [p.teacherTime, p.studentTime])
     };
   }
 };

@@ -602,22 +602,36 @@ function initSkeleton(data) {
   _teacherFrames = data.teacherFrames;
   _studentFrames = data.studentFrames;
   
-  // Build frame mapping using audio alignment when available
-  const align = data.audioAlign;
-  const hopSec = 512 / 22050;
-  _mappedIndices = _teacherFrames.map((tf, i) => {
-    let targetTs = tf.ts;
-    if (align && align.used && align.tempoRatio) {
-      const timeOffset = (align.offset || 0) * hopSec;
-      targetTs = (tf.ts - timeOffset) * align.tempoRatio;
-    }
-    let best = 0, bestDist = Infinity;
-    for (let j = 0; j < _studentFrames.length; j++) {
-      const d = Math.abs(_studentFrames[j].ts - targetTs);
-      if (d < bestDist) { bestDist = d; best = j; }
-    }
-    return best;
-  });
+  // Build frame mapping: use pre-computed frameMapping from scoring (audio-aligned or DTW)
+  if (data.frameMapping && data.frameMapping.length > 0) {
+    // frameMapping is [[teacherTs, studentTs], ...]
+    // Build a lookup: for each teacher frame, find the matching student frame
+    _mappedIndices = _teacherFrames.map((tf) => {
+      // Find the frameMapping entry closest to this teacher frame's ts
+      let bestPair = null, bestDist = Infinity;
+      for (const [tTs, sTs] of data.frameMapping) {
+        const d = Math.abs(tf.ts - tTs);
+        if (d < bestDist) { bestDist = d; bestPair = sTs; }
+      }
+      // Now find the student frame closest to the mapped student time
+      let best = 0, bd = Infinity;
+      for (let j = 0; j < _studentFrames.length; j++) {
+        const d = Math.abs(_studentFrames[j].ts - bestPair);
+        if (d < bd) { bd = d; best = j; }
+      }
+      return best;
+    });
+  } else {
+    // Fallback: simple timestamp matching
+    _mappedIndices = _teacherFrames.map((tf) => {
+      let best = 0, bestDist = Infinity;
+      for (let j = 0; j < _studentFrames.length; j++) {
+        const d = Math.abs(_studentFrames[j].ts - tf.ts);
+        if (d < bestDist) { bestDist = d; best = j; }
+      }
+      return best;
+    });
+  }
   
   const area = document.getElementById('skeletonArea');
   const slider = document.getElementById('frameSlider');
@@ -915,18 +929,27 @@ async function initKeyframeComparison(){
       loadEl.innerHTML='<div style="font-size:13px;color:#9B9EAB">完成评分后可查看关键帧对比</div>';return;
     }
     const tFrames=res.teacherFrames,sFrames=res.studentFrames;
-    // Map frames using audio alignment when available
-    const kfAlign=res.audioAlign;
-    const kfHopSec=512/22050;
+    // Map frames using pre-computed frameMapping from scoring
+    const fMap=res.frameMapping;
     const mapped=tFrames.map((tf,i)=>{
-      let targetTs=tf.ts;
-      if(kfAlign&&kfAlign.used&&kfAlign.tempoRatio){
-        const tOff=(kfAlign.offset||0)*kfHopSec;
-        targetTs=(tf.ts-tOff)*kfAlign.tempoRatio;
+      let sIdx=i; // fallback
+      if(fMap&&fMap.length){
+        // Find closest frameMapping entry
+        let bestD=Infinity;
+        for(const [tTs,sTs] of fMap){
+          const d=Math.abs(tf.ts-tTs);
+          if(d<bestD){bestD=d;
+            // Find student frame index by ts
+            let b2=0,bd2=Infinity;
+            for(let j=0;j<sFrames.length;j++){const d2=Math.abs(sFrames[j].ts-sTs);if(d2<bd2){bd2=d2;b2=j;}}
+            sIdx=b2;
+          }
+        }
+      } else {
+        let bd=Infinity;
+        for(let j=0;j<sFrames.length;j++){const d=Math.abs(sFrames[j].ts-tf.ts);if(d<bd){bd=d;sIdx=j;}}
       }
-      let best=0,bd=Infinity;
-      for(let j=0;j<sFrames.length;j++){const d=Math.abs(sFrames[j].ts-targetTs);if(d<bd){bd=d;best=j;}}
-      return{tIdx:i,sIdx:best,ts:tf.ts};
+      return{tIdx:i,sIdx,ts:tf.ts};
     });
     // Compute diffs
     const withDiffs=mapped.map(p=>{
