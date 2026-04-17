@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分析中 · DanceFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+<link rel="stylesheet" href="css/style.css?v=8">
+</head>
+<body style="background:linear-gradient(180deg,#FDF4FF 0%,#FFF7ED 50%,#FFF 100%)">
+
+<div class="container" style="justify-content:center;text-align:center">
+  <a href="upload.html" style="position:fixed;top:16px;left:20px;z-index:10;color:#8B5CF6;font-size:14px;font-weight:600;text-decoration:none">← 返回</a>
+
+  <div class="spinner-wrap">
+    <div class="spinner-ring-outer"></div>
+    <div class="spinner-ring"></div>
+    <div class="spinner-icon">
+      <span class="material-symbols-rounded icon-gradient" style="font-size:64px">sprint</span>
+    </div>
+  </div>
+
+  <div class="gradient-text-2" style="font-size:20px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px" id="status">
+    <span class="material-symbols-rounded icon-gradient" style="font-size:24px" id="statusIcon">sensors</span>
+    <span id="statusText">正在识别舞蹈动作</span>
+  </div>
+  <div style="font-size:14px;color:#9B9EAB;margin-bottom:32px" id="statusSub">正在分析中，约需 15-30 秒...</div>
+
+  <div class="progress-track">
+    <div class="progress-fill" id="bar"></div>
+  </div>
+
+  <div class="tip-card" style="margin-top:24px;max-width:360px">
+    <svg class="icon-sm" style="flex-shrink:0;margin-top:1px" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18h6"/><path d="M10 22h4"/>
+      <path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/>
+    </svg>
+    <span><strong>小贴士：</strong>拍摄时尽量保持全身入镜，光线充足效果更好哦！</span>
+  </div>
+
+  <p id="errorMsg" style="color:#EF4444;margin-top:1rem;font-size:14px;display:none"></p>
+</div>
+
+<script src="js/utils.js?v=8"></script>
+<!-- MediaPipe Tasks Vision -->
+<script type="module">
+import {PoseLandmarker,FilesetResolver} from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs';
+window.PoseLandmarker=PoseLandmarker;
+window.FilesetResolver=FilesetResolver;
+
+// Load pose.js after MediaPipe is ready
+const s1=document.createElement('script');s1.src='js/pose.js?v=8';document.body.appendChild(s1);
+const s2=document.createElement('script');s2.src='js/dtw.js?v=8';document.body.appendChild(s2);
+const s3=document.createElement('script');s3.src='js/scoring.js?v=8';document.body.appendChild(s3);
+const s4=document.createElement('script');s4.src='js/audio-align.js?v=8';document.body.appendChild(s4);
+
+// Signal that MediaPipe is ready
+window.__mediapipeReady=true;
+window.dispatchEvent(new Event('mediapipe-ready'));
+</script>
+
+<script>
+const bar=document.getElementById('bar');
+const statusText=document.getElementById('statusText');
+const statusIcon=document.getElementById('statusIcon');
+const statusSub=document.getElementById('statusSub');
+const statusEl=document.getElementById('status');
+const errorMsg=document.getElementById('errorMsg');
+
+const stepIcons=['sensors','search','star'];
+
+function setProgress(p,stepIdx){
+  bar.style.width=Math.round(p)+'%';
+  const icons=['sensors','search','star'];
+  const texts=['正在识别舞蹈动作','正在对比动作细节','正在生成评分报告'];
+  if(stepIdx!==undefined&&stepIdx<3){
+    statusText.textContent=texts[stepIdx];
+    statusIcon.textContent=icons[stepIdx];
+  }
+}
+
+function showError(msg){
+  errorMsg.textContent=msg;
+  errorMsg.style.display='block';
+}
+
+// openDB is now in js/utils.js?v=8
+
+function getVideo(db,key){
+  return new Promise((res,rej)=>{
+    const tx=db.transaction('videos','readonly');
+    const req=tx.objectStore('videos').get(key);
+    req.onsuccess=()=>res(req.result);
+    req.onerror=rej;
+  });
+}
+
+async function run(){
+  try{
+    // Wait for MediaPipe + pose.js to be ready
+    let attempts=0;
+    while((!window.PoseLandmarker||!window.FilesetResolver||typeof PoseExtractor==='undefined')&&attempts<100){
+      await new Promise(r=>setTimeout(r,200));attempts++;
+    }
+    if(!window.PoseLandmarker||!window.FilesetResolver){
+      showError('MediaPipe 模型加载失败，请刷新重试');return;
+    }
+    if(typeof PoseExtractor==='undefined'){
+      showError('姿态提取模块加载失败，请刷新重试');return;
+    }
+
+    const db=await openDB();
+    const teacherBlob=await getVideo(db,'teacher');
+    const studentBlob=await getVideo(db,'student');
+
+    if(!teacherBlob||!studentBlob){
+      showError('未找到视频文件，请返回上传页重新上传');return;
+    }
+
+    setProgress(5,0);
+    const teacherFrames=await PoseExtractor.extractFromVideo(teacherBlob,8,(msg,p)=>{
+      if(p!==undefined)setProgress(5+p*30,0);
+    });
+    if(teacherFrames.length<3){showError('老师视频中未检测到足够的姿态数据');return}
+
+    setProgress(35,0);
+    const studentFrames=await PoseExtractor.extractFromVideo(studentBlob,8,(msg,p)=>{
+      if(p!==undefined)setProgress(35+p*30,0);
+    });
+    if(studentFrames.length<3){showError('你的视频中未检测到足够的姿态数据');return}
+
+    // ── Step 2.5: Audio alignment ──
+    setProgress(65,1);
+    statusText.textContent='正在分析音频...';
+    statusIcon.textContent='graphic_eq';
+    await new Promise(r=>setTimeout(r,100));
+
+    let alignment=null;
+    try{
+      // Wait for audio-align.js
+      let aAttempts=0;
+      while(typeof AudioAlign==='undefined'&&aAttempts<50){await new Promise(r=>setTimeout(r,100));aAttempts++;}
+
+      if(typeof AudioAlign!=='undefined'){
+        const [tAudio,sAudio]=await Promise.all([
+          AudioAlign.extractAudio(teacherBlob),
+          AudioAlign.extractAudio(studentBlob)
+        ]);
+        setProgress(72,1);
+        if(tAudio&&sAudio){
+          const tChroma=AudioAlign.computeChromagram(tAudio.data,tAudio.sampleRate);
+          const sChroma=AudioAlign.computeChromagram(sAudio.data,sAudio.sampleRate);
+          setProgress(78,1);
+          alignment=AudioAlign.alignAudio(tChroma,sChroma);
+        }
+      }
+    }catch(ae){console.warn('Audio alignment skipped:',ae);}
+
+    setProgress(80,1);
+    statusText.textContent='正在对比动作细节';
+    statusIcon.textContent='search';
+    await new Promise(r=>setTimeout(r,200));
+    const result=Scoring.compute(teacherFrames,studentFrames,alignment);
+
+    setProgress(90,2);
+    await new Promise(r=>setTimeout(r,500));
+
+    const fullResult={...result,teacherFrames,studentFrames};
+    const tx2=db.transaction('videos','readwrite');
+    tx2.objectStore('videos').put(fullResult,'result');
+    tx2.oncomplete=()=>{
+      bar.style.width='100%';
+      statusEl.innerHTML='<span>分析完成！</span>';
+      statusSub.textContent='';
+      setTimeout(()=>window.location.href='result.html',800);
+    };
+  }catch(err){
+    console.error(err);
+    showError('分析出错: '+err.message);
+  }
+}
+
+run();
+</script>
+</body>
+</html>

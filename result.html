@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>评分结果 · DanceFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+<link rel="stylesheet" href="css/style.css?v=8">
+</head>
+<body>
+<!-- Shared SVG defs -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="grad-purple-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+    <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="50%" stop-color="#EC4899"/>
+      <stop offset="100%" stop-color="#F97316"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="container" style="align-items:stretch;padding-bottom:40px">
+  <div style="text-align:center;margin-bottom:28px">
+    <a href="upload.html" style="display:inline-flex;align-items:center;gap:4px;font-size:14px;color:#8B5CF6;text-decoration:none;font-weight:600;margin-bottom:16px">← 返回</a>
+    <h1 class="gradient-text-2" style="font-size:22px;font-weight:800">评分结果</h1>
+  </div>
+
+  <!-- Total Score -->
+  <div class="score-section">
+    <div class="ring-wrap">
+      <svg viewBox="0 0 180 180" width="180" height="180">
+        <circle cx="90" cy="90" r="70" class="ring-bg"/>
+        <circle cx="90" cy="90" r="70" class="ring-fill" id="mainRing"/>
+      </svg>
+      <div class="score-num gradient-text" id="mainScore">0</div>
+    </div>
+    <div style="font-size:15px;color:#6B6E7B;font-weight:600">综合评分</div>
+    <div style="font-size:12px;color:#9B9EAB;margin-top:2px">满分 100 · 入门 40 · 进阶 70 · 专业 90</div>
+    <div class="score-badge" id="scoreBadge" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" stroke="none"><polygon points="12,2 15,9 22,9 16.5,14 18.5,21 12,17 5.5,21 7.5,14 2,9 9,9"/></svg>
+      <span id="badgeText"></span>
+    </div>
+  </div>
+
+  <!-- 3 Dimensions -->
+  <div class="dims">
+    <div class="dim-card">
+      <div style="margin:0 auto 8px;display:flex;align-items:center;justify-content:center">
+        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="#8B5CF6"/>
+        </svg>
+      </div>
+      <div class="dim-ring">
+        <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" class="dim-bg"/><circle cx="28" cy="28" r="24" class="dim-fill" stroke="#8B5CF6" id="dimA" stroke-dashoffset="150" style="--off:150"/></svg>
+        <div class="dim-val" style="color:#8B5CF6" id="dimAv">0</div>
+      </div>
+      <div class="dim-label">动作准确度</div>
+    </div>
+    <div class="dim-card">
+      <div style="margin:0 auto 8px;display:flex;align-items:center;justify-content:center">
+        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+        </svg>
+      </div>
+      <div class="dim-ring">
+        <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" class="dim-bg"/><circle cx="28" cy="28" r="24" class="dim-fill" stroke="#10B981" id="dimExt" stroke-dashoffset="150" style="--off:150"/></svg>
+        <div class="dim-val" style="color:#10B981" id="dimExtv">0</div>
+      </div>
+      <div class="dim-label">延展性</div>
+    </div>
+    <div class="dim-card">
+      <div style="margin:0 auto 8px;display:flex;align-items:center;justify-content:center">
+        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="#EC4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0"/>
+          <path d="M2 18c2-4 4-4 6 0s4 4 6 0 4-4 6 0" opacity=".4"/>
+        </svg>
+      </div>
+      <div class="dim-ring">
+        <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" class="dim-bg"/><circle cx="28" cy="28" r="24" class="dim-fill" stroke="#EC4899" id="dimB" stroke-dashoffset="150" style="--off:150"/></svg>
+        <div class="dim-val" style="color:#EC4899" id="dimBv">0</div>
+      </div>
+      <div class="dim-label">流畅度</div>
+    </div>
+    <div class="dim-card">
+      <div style="margin:0 auto 8px;display:flex;align-items:center;justify-content:center">
+        <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18V5l12-2v13"/>
+          <circle cx="6" cy="18" r="3" fill="#F97316" opacity=".3"/><circle cx="6" cy="18" r="3"/>
+          <circle cx="18" cy="16" r="3" fill="#F97316" opacity=".3"/><circle cx="18" cy="16" r="3"/>
+        </svg>
+      </div>
+      <div class="dim-ring">
+        <svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="24" class="dim-bg"/><circle cx="28" cy="28" r="24" class="dim-fill" stroke="#F97316" id="dimC" stroke-dashoffset="150" style="--off:150"/></svg>
+        <div class="dim-val" style="color:#F97316" id="dimCv">0</div>
+      </div>
+      <div class="dim-label">节奏感</div>
+    </div>
+  </div>
+
+  <!-- Audio Alignment Info -->
+  <div id="audioAlignInfo" style="display:none;margin-bottom:16px;padding:12px 16px;border-radius:12px;background:rgba(139,92,246,0.08);font-size:13px;color:#6B6E7B">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <span class="material-symbols-rounded" style="font-size:18px;color:#8B5CF6">graphic_eq</span>
+      <span style="font-weight:600;color:#8B5CF6" id="alignTitle">音频对齐</span>
+    </div>
+    <div id="alignDetail"></div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="section-title">
+    <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="url(#grad-purple-pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/>
+    </svg>
+    逐段评分
+  </div>
+  <div class="timeline" id="timeline"></div>
+
+  <!-- Skeleton area -->
+  <div class="section-title">
+    <span class="material-symbols-rounded icon-gradient" style="font-size:24px">sprint</span>
+    骨架对比
+  </div>
+  <div class="coming-soon-bar">
+    <span class="material-symbols-rounded" style="font-size:18px">lock</span>
+    骨架叠加对比 · 即将开放
+  </div>
+
+  <!-- Share Button + Popup Menu -->
+  <div class="btns" style="position:relative">
+    <button class="btn-primary" onclick="toggleShareMenu()" id="shareBtn" style="flex:1">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+      分享评分
+    </button>
+    <!-- Share submenu -->
+    <div id="shareMenu" style="display:none;position:absolute;bottom:calc(100% + 8px);left:0;right:0;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.12);padding:8px;z-index:100">
+      <button onclick="shareLink();toggleShareMenu()" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:12px;font-size:14px;font-weight:500;color:#374151;text-align:left" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='none'">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#8B5CF6">link</span>
+        复制链接
+      </button>
+      <button onclick="generateShareImage();toggleShareMenu()" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:12px;font-size:14px;font-weight:500;color:#374151;text-align:left" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='none'">
+        <span class="material-symbols-rounded" style="font-size:20px;color:#10B981">image</span>
+        生成长图
+      </button>
+      <button onclick="shareToWechat();toggleShareMenu()" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;border:none;background:none;cursor:pointer;border-radius:12px;font-size:14px;font-weight:500;color:#374151;text-align:left" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='none'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#07C160"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 01.213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 00.167-.054l1.903-1.114a.864.864 0 01.717-.098 10.16 10.16 0 002.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 01-1.162 1.178A1.17 1.17 0 014.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 01-1.162 1.178 1.17 1.17 0 01-1.162-1.178c0-.651.52-1.18 1.162-1.18zm3.232 4.434c-3.981 0-7.227 2.702-7.227 6.048 0 3.345 3.246 6.048 7.227 6.048.803 0 1.574-.12 2.3-.333a.71.71 0 01.588.082l1.558.912a.272.272 0 00.138.045c.132 0 .24-.108.24-.243 0-.06-.024-.118-.04-.175l-.32-1.216a.49.49 0 01.175-.547C21.443 18.566 22.543 16.932 22.543 16.473c0-3.346-3.246-6.048-7.713-6.048z"/></svg>
+        分享到微信
+      </button>
+    </div>
+    <a href="upload.html" class="btn-outline">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23,4 23,10 17,10"/><polyline points="1,20 1,14 7,14"/>
+        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+      </svg>
+      再来一次
+    </a>
+  </div>
+</div>
+
+<script src="js/utils.js?v=8"></script>
+<script src="js/visualizer.js?v=8"></script>
+<script>
+// openDB is now in js/utils.js?v=8
+
+function animateValue(el,target,duration){
+  const start=performance.now();
+  function tick(now){
+    const p=Math.min((now-start)/duration,1);
+    const ease=1-Math.pow(1-p,3);
+    el.textContent=Math.round(ease*target);
+    if(p<1)requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+async function loadAndRender(){
+  const db=await openDB();
+  const tx=db.transaction('videos','readonly');
+  const req=tx.objectStore('videos').get('result');
+  req.onsuccess=()=>{
+    const data=req.result;
+    if(!data){document.querySelector('h1').textContent='未找到分析结果';return}
+    _shareData=data;
+    renderScores(data);
+    renderAudioAlign(data);
+    renderTimeline(data.segments);
+  };
+}
+
+function renderScores(data){
+  // Main ring: circumference = 2*PI*70 ≈ 440
+  const circumference=2*Math.PI*70;
+  const mainRing=document.getElementById('mainRing');
+  setTimeout(()=>{
+    mainRing.style.strokeDashoffset=circumference*(1-data.total/100);
+  },300);
+  animateValue(document.getElementById('mainScore'),data.total,1500);
+
+  // Badge
+  const badge=document.getElementById('scoreBadge');
+  const badgeText=document.getElementById('badgeText');
+  // Simple percentile estimate
+  let pct=Math.min(99,Math.max(10,Math.round(data.total*0.9+5)));
+  badge.style.display='inline-flex';
+  badgeText.textContent='超过 '+pct+'% 的舞者 🎉';
+
+  // Dimension rings: circumference = 2*PI*24 ≈ 150
+  const dimCirc=2*Math.PI*24;
+  const dims=[
+    ['dimA','dimAv',data.accuracy,'#8B5CF6'],
+    ['dimExt','dimExtv',data.extension||0,'#10B981'],
+    ['dimB','dimBv',data.fluency,'#EC4899'],
+    ['dimC','dimCv',data.rhythm,'#F97316']
+  ];
+  dims.forEach(([ringId,valId,score])=>{
+    const off=dimCirc*(1-score/100);
+    const ring=document.getElementById(ringId);
+    ring.style.strokeDashoffset='150';
+    setTimeout(()=>{ring.style.strokeDashoffset=off;},300);
+    animateValue(document.getElementById(valId),score,1800);
+  });
+}
+
+function renderAudioAlign(data){
+  const info=data.audioAlign;
+  const el=document.getElementById('audioAlignInfo');
+  if(!info){el.style.display='none';return;}
+  el.style.display='block';
+  const det=document.getElementById('alignDetail');
+  if(info.used){
+    const ratioTxt=info.tempoRatio!==1.0?`检测到音乐变速 ${info.tempoRatio}x，已自动对齐 · `:''; 
+    det.innerHTML=`${ratioTxt}音乐匹配度 ${info.confidence}% · 有效对比 ${data.effectiveDuration||'?'}s（教师 ${data.teacherDuration||'?'}s，学生 ${data.studentDuration||'?'}s）`;
+  }else{
+    document.getElementById('alignTitle').textContent='动作对齐';
+    det.textContent=info.fallbackReason||'已使用动作对齐模式';
+    el.style.background='rgba(249,115,22,0.08)';
+    document.getElementById('alignTitle').style.color='#F97316';
+  }
+}
+
+function renderTimeline(segments){
+  const tl=document.getElementById('timeline');
+  if(!segments||!segments.length)return;
+  segments.forEach((seg,i)=>{
+    const wrapper=document.createElement('div');
+    wrapper.style.cssText='margin-bottom:16px';
+    const startSec=seg.startTime!=null?seg.startTime:i*8;
+    const endSec=seg.endTime!=null?seg.endTime:(startSec+8);
+    let color,textColor;
+    if(seg.score>=80){color='linear-gradient(90deg,#10B981,#34D399)';textColor='#10B981'}
+    else if(seg.score>=60){color='linear-gradient(90deg,#EAB308,#F97316)';textColor='#D97706'}
+    else{color='linear-gradient(90deg,#F97316,#EF4444)';textColor='#EF4444'}
+    // Bar row
+    wrapper.innerHTML=`
+      <div class="tl-row">
+        <span class="tl-label">${startSec}-${endSec}s</span>
+        <div class="tl-bar-bg"><div class="tl-bar" style="width:${seg.score}%;background:${color}"></div></div>
+        <span class="tl-score" style="color:${textColor}">${seg.score}</span>
+      </div>
+      <div style="display:flex;gap:8px;margin:4px 0 0 66px;flex-wrap:wrap">
+        ${seg.accuracy!=null?`<span class="seg-tag" style="color:#8B5CF6;border-color:#8B5CF6">准确 ${seg.accuracy}</span>`:''}
+        ${seg.extension!=null?`<span class="seg-tag" style="color:#10B981;border-color:#10B981">延展 ${seg.extension}</span>`:''}
+        ${seg.fluency!=null?`<span class="seg-tag" style="color:#EC4899;border-color:#EC4899">流畅 ${seg.fluency}</span>`:''}
+        ${seg.rhythm!=null?`<span class="seg-tag" style="color:#F97316;border-color:#F97316">节奏 ${seg.rhythm}</span>`:''}
+      </div>`;
+    tl.appendChild(wrapper);
+  });
+}
+
+
+// ─── Share Functions ────────────────────────────────────────────
+let _shareData = null;
+
+function toggleShareMenu() {
+  const menu = document.getElementById('shareMenu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+// Close menu on outside click
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('shareMenu');
+  const btn = document.getElementById('shareBtn');
+  if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.style.display = 'none';
+  }
+});
+ // cached result data for sharing
+
+function shareLink() {
+  if (!_shareData) { alert('评分数据未加载'); return; }
+  // Encode key scores into URL params
+  const params = new URLSearchParams({
+    t: _shareData.total,
+    a: _shareData.accuracy,
+    x: _shareData.extension || 0,
+    f: _shareData.fluency,
+    r: _shareData.rhythm
+  });
+  const url = window.location.origin + '/result?' + params.toString();
+  
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('链接已复制到剪贴板 ✅');
+    }).catch(() => {
+      fallbackCopy(url);
+    });
+  } else {
+    fallbackCopy(url);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  showToast('链接已复制到剪贴板 ✅');
+}
+
+function showToast(msg) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:12px 24px;border-radius:24px;font-size:14px;font-weight:600;z-index:999;transition:opacity 0.3s;white-space:nowrap';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
+async function generateShareImage() {
+  showToast('正在生成长图...');
+  
+  if (!window.html2canvas) {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    document.body.appendChild(script);
+    await new Promise((res, rej) => { script.onload = res; script.onerror = rej; });
+  }
+  
+  try {
+    const container = document.querySelector('.container') || document.body;
+    
+    // === PRE-SCREENSHOT: modify page directly ===
+    
+    // 1. Force score number (in case animation hasn't finished)
+    const mainScore = document.getElementById('mainScore');
+    const origScore = mainScore ? mainScore.textContent : '';
+    if (mainScore && _shareData) mainScore.textContent = _shareData.total;
+    
+    // 2. Force main ring
+    const mainRing = document.getElementById('mainRing');
+    const origRingOffset = mainRing ? mainRing.style.strokeDashoffset : '';
+    const origRingTransition = mainRing ? mainRing.style.transition : '';
+    if (mainRing && _shareData) {
+      const circ = 2 * Math.PI * 70;
+      mainRing.style.transition = 'none';
+      mainRing.style.strokeDashoffset = String(circ * (1 - _shareData.total / 100));
+    }
+    
+    // 3. Force dimension values
+    const dimDefs = [
+      ['dimA','dimAv', _shareData?.accuracy],
+      ['dimExt','dimExtv', _shareData?.extension],
+      ['dimB','dimBv', _shareData?.fluency],
+      ['dimC','dimCv', _shareData?.rhythm]
+    ];
+    const dimCirc = 2 * Math.PI * 24;
+    const origDims = [];
+    dimDefs.forEach(([ringId, valId, score]) => {
+      const ring = document.getElementById(ringId);
+      const val = document.getElementById(valId);
+      origDims.push({
+        ringId, valId,
+        ringOffset: ring ? ring.style.strokeDashoffset : '',
+        ringTransition: ring ? ring.style.transition : '',
+        valText: val ? val.textContent : ''
+      });
+      if (ring && score != null) {
+        ring.style.transition = 'none';
+        ring.style.strokeDashoffset = String(dimCirc * (1 - score / 100));
+      }
+      if (val && score != null) val.textContent = String(score);
+    });
+    
+    // 4. Hide elements we don't want in the image
+    const hideEls = [];
+    // Hide buttons
+    document.querySelectorAll('.btns').forEach(el => {
+      hideEls.push({ el, orig: el.style.display });
+      el.style.display = 'none';
+    });
+    // Hide back link
+    container.querySelectorAll('a[href="upload.html"]').forEach(el => {
+      hideEls.push({ el, orig: el.style.display });
+      el.style.display = 'none';
+    });
+    // Hide skeleton section
+    document.querySelectorAll('.section-title').forEach(el => {
+      if (el.textContent.includes('骨架')) {
+        hideEls.push({ el, orig: el.style.display });
+        el.style.display = 'none';
+        if (el.nextElementSibling) {
+          hideEls.push({ el: el.nextElementSibling, orig: el.nextElementSibling.style.display });
+          el.nextElementSibling.style.display = 'none';
+        }
+      }
+    });
+    document.querySelectorAll('.coming-soon-bar').forEach(el => {
+      hideEls.push({ el, orig: el.style.display });
+      el.style.display = 'none';
+    });
+    // Hide share menu if open
+    const shareMenu = document.getElementById('shareMenu');
+    if (shareMenu) {
+      hideEls.push({ el: shareMenu, orig: shareMenu.style.display });
+      shareMenu.style.display = 'none';
+    }
+    
+    // 5. Add temporary watermark
+    const watermark = document.createElement('div');
+    watermark.style.cssText = 'text-align:center;padding:20px 0 28px;font-size:13px;color:#9B9EAB;font-weight:500';
+    watermark.textContent = '舞韵星迹 · DanceFlow';
+    container.appendChild(watermark);
+    
+    // === CAPTURE ===
+    // Force browser repaint with double rAF + timeout
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 300))));
+    
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#F8F9FC',
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+    
+    // === POST-SCREENSHOT: restore everything ===
+    watermark.remove();
+    hideEls.forEach(({ el, orig }) => { el.style.display = orig; });
+    if (mainScore) mainScore.textContent = origScore;
+    if (mainRing) { mainRing.style.strokeDashoffset = origRingOffset; mainRing.style.transition = origRingTransition; }
+    origDims.forEach(({ ringId, valId, ringOffset, ringTransition, valText }) => {
+      const ring = document.getElementById(ringId);
+      const val = document.getElementById(valId);
+      if (ring) { ring.style.strokeDashoffset = ringOffset; ring.style.transition = ringTransition; }
+      if (val) val.textContent = valText;
+    });
+    
+    // === OUTPUT ===
+    canvas.toBlob(async (blob) => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.write) {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          showToast('长图已复制到剪贴板 📋');
+          return;
+        }
+      } catch(e) { console.log('Clipboard failed:', e); }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'danceflow-score.png'; a.click();
+      showToast('长图已保存 📸');
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, 'image/png');
+    
+  } catch(e) {
+    console.error(e);
+    showToast('生成失败，请截屏分享');
+  }
+}
+
+async function downloadImage(url, blob) {
+  // Try to copy image to clipboard first
+  try {
+    if (navigator.clipboard && navigator.clipboard.write) {
+      const clipBlob = blob || await fetch(url).then(r => r.blob());
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': clipBlob })
+      ]);
+      showToast('长图已复制到剪贴板 📋');
+      return;
+    }
+  } catch(e) {
+    console.log('Clipboard write failed, falling back to download', e);
+  }
+  // Fallback: download file
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'danceflow-score.png';
+  a.click();
+  showToast('长图已保存到相册 📸');
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function shareToWechat() {
+  if (!_shareData) { alert('评分数据未加载'); return; }
+  
+  // On mobile: try native share API
+  if (navigator.share) {
+    navigator.share({
+      title: '舞韵星迹评分',
+      text: `我在舞韵星迹获得了 ${_shareData.total} 分！准确度${_shareData.accuracy} 延展性${_shareData.extension||'-'} 流畅度${_shareData.fluency} 节奏感${_shareData.rhythm}`,
+      url: window.location.href
+    }).catch(() => {
+      showToast('请长按生成的长图分享到微信');
+      generateShareImage();
+    });
+    return;
+  }
+  
+  // Desktop fallback: generate image and prompt user
+  showToast('生成长图后保存，打开微信分享 💬');
+  generateShareImage();
+}
+
+
+loadAndRender();
+</script>
+</body>
+</html>

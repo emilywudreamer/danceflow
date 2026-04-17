@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>上传视频 · DanceFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+<link rel="stylesheet" href="css/style.css?v=8">
+</head>
+<body style="background:linear-gradient(180deg,#FDF4FF 0%,#FAFAFA 40%,#FFF 100%)">
+
+<div class="container">
+  <div style="margin-bottom:12px"><a href="index.html" style="color:#9B9EAB;text-decoration:none;font-size:14px">← 返回首页</a></div>
+  <div class="steps-bar">
+    <div class="step-dot done">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,8 7,12 13,4"/></svg>
+    </div>
+    <div class="step-line active"></div>
+    <div class="step-dot active">2</div>
+    <div class="step-line"></div>
+    <div class="step-dot">3</div>
+  </div>
+
+  <h1 class="gradient-text-2" style="font-size:24px;font-weight:800;text-align:center;margin-bottom:8px">上传视频</h1>
+  <p style="text-align:center;color:#6B6E7B;font-size:14px;margin-bottom:28px">上传两段视频，AI 为你对比分析</p>
+
+  <label class="upload-card" id="teacherZone">
+    <span style="margin-bottom:12px;display:flex;align-items:center;justify-content:center">
+      <span class="material-symbols-rounded icon-gradient" style="font-size:48px">directions_run</span>
+    </span>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">上传老师视频</div>
+    <div style="font-size:13px;color:#9B9EAB">拖入视频文件 或 点击选择</div>
+    <div style="font-size:12px;color:#9B9EAB;margin-top:4px">支持 MP4/MOV，最大 500MB</div>
+    <input type="file" id="teacherInput" accept="video/*">
+    <div class="preview" id="prev1">
+      <div class="preview-thumb" id="thumb1"></div>
+      <span class="preview-name" id="name1"></span>
+      <button class="preview-remove" onclick="removeFile(event,1)">✕</button>
+    </div>
+  </label>
+
+  <label class="upload-card" id="studentZone">
+    <span style="margin-bottom:12px;display:flex;align-items:center;justify-content:center">
+      <span class="material-symbols-rounded icon-gradient" style="font-size:48px">videocam</span>
+    </span>
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px">上传你的视频</div>
+    <div style="font-size:13px;color:#9B9EAB">拖入视频文件 或 点击选择</div>
+    <div style="font-size:12px;color:#9B9EAB;margin-top:4px">支持 MP4/MOV，最大 500MB</div>
+    <input type="file" id="studentInput" accept="video/*">
+    <div class="preview" id="prev2">
+      <div class="preview-thumb" id="thumb2"></div>
+      <span class="preview-name" id="name2"></span>
+      <button class="preview-remove" onclick="removeFile(event,2)">✕</button>
+    </div>
+  </label>
+
+  <div style="margin-top:auto;padding:20px 0;width:100%">
+    <button class="cta full-width disabled" id="startBtn">请先上传两段视频</button>
+    <p id="statusMsg" style="font-size:13px;color:#9B9EAB;margin-top:12px;text-align:center"></p>
+  </div>
+</div>
+
+<script src="js/utils.js?v=8"></script>
+<script>
+let teacherFile=null,studentFile=null;
+const btn=document.getElementById('startBtn');
+const status=document.getElementById('statusMsg');
+
+function setupZone(zoneId,inputId,n,setter){
+  const zone=document.getElementById(zoneId);
+  const input=document.getElementById(inputId);
+
+  input.addEventListener('change',e=>{
+    if(e.target.files[0])handleUpload(e.target.files[0],zone,n,setter);
+  });
+  zone.addEventListener('dragover',e=>{e.preventDefault()});
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();
+    if(e.dataTransfer.files[0])handleUpload(e.dataTransfer.files[0],zone,n,setter);
+  });
+}
+
+function handleUpload(file,zone,n,setter){
+  if(!file.type.startsWith('video/')){status.textContent='请上传视频文件';return}
+  if(file.size>500*1024*1024){status.textContent='文件超过 500MB 限制，请压缩后重试';return}
+  setter(file);
+  zone.classList.add('has-file');
+  document.getElementById('name'+n).textContent=file.name+' ('+( file.size/1048576).toFixed(1)+'MB)';
+  document.getElementById('prev'+n).classList.add('show');
+  checkReady();
+}
+
+function removeFile(e,n){
+  e.preventDefault();e.stopPropagation();
+  if(n===1){teacherFile=null;document.getElementById('teacherInput').value=''}
+  else{studentFile=null;document.getElementById('studentInput').value=''}
+  const zone=n===1?document.getElementById('teacherZone'):document.getElementById('studentZone');
+  zone.classList.remove('has-file');
+  document.getElementById('prev'+n).classList.remove('show');
+  checkReady();
+}
+
+function checkReady(){
+  if(teacherFile&&studentFile){btn.classList.remove('disabled');btn.textContent='开始对比分析 →'}
+  else{btn.classList.add('disabled');btn.textContent='请先上传两段视频'}
+}
+
+setupZone('teacherZone','teacherInput',1,f=>teacherFile=f);
+setupZone('studentZone','studentInput',2,f=>studentFile=f);
+
+btn.addEventListener('click',()=>{
+  if(!teacherFile||!studentFile)return;
+  storeAndNavigate();
+});
+
+async function storeAndNavigate(){
+  status.textContent='准备中...';
+  const db=await openDB();
+  const tx=db.transaction('videos','readwrite');
+  const store=tx.objectStore('videos');
+  store.put(teacherFile,'teacher');
+  store.put(studentFile,'student');
+  tx.oncomplete=()=>window.location.href='analyze.html';
+}
+
+// openDB is now in js/utils.js?v=8
+</script>
+</body>
+</html>

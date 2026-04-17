@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+cookies.json
+.env
+screenshots/
+downloads/
+*.log

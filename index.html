@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>舞韵星迹 · DanceFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+<link rel="stylesheet" href="css/style.css?v=8">
+</head>
+<body>
+<!-- Shared SVG gradient defs -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="grad-purple-pink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="bg-blobs">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<div class="container">
+  <div class="logo-area" style="margin-top:48px;display:flex;align-items:center;gap:10px">
+    <span class="material-symbols-rounded icon-gradient" style="font-size:48px">sprint</span>
+    <span style="font-size:14px;font-weight:600;letter-spacing:1px;color:#8B5CF6;text-transform:uppercase">DanceFlow</span>
+  </div>
+  <h1 class="gradient-text" style="font-size:36px;font-weight:800;margin:12px 0 8px">舞韵星迹</h1>
+  <p style="font-size:16px;color:#6B6E7B;margin-bottom:4px">AI 帮你跳得更好</p>
+  <p style="font-size:13px;color:#9B9EAB;margin-bottom:32px">已有 12,000+ 舞者在使用</p>
+  <a href="upload.html" class="cta">开始评分 →</a>
+
+  <div style="display:grid;grid-template-columns:1fr;gap:24px;width:100%;margin-top:48px">
+    <div class="card">
+      <div style="margin-bottom:12px"><span class="material-symbols-rounded icon-gradient" style="font-size:32px">compare</span></div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px">动作评分</div>
+      <div style="font-size:14px;color:#6B6E7B;line-height:1.5">AI 逐帧对比你和老师的动作，精确到每个关节角度</div>
+    </div>
+    <div class="card">
+      <div style="margin-bottom:12px"><span class="material-symbols-rounded icon-gradient" style="font-size:32px">analytics</span></div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px">多维分析</div>
+      <div style="font-size:14px;color:#6B6E7B;line-height:1.5">从准确度、流畅度、节奏感三大维度全面评估</div>
+    </div>
+    <div class="card">
+      <div style="margin-bottom:12px"><span class="material-symbols-rounded icon-gradient" style="font-size:32px">trending_up</span></div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px">快速提升</div>
+      <div style="font-size:14px;color:#6B6E7B;line-height:1.5">针对性建议帮你找到薄弱点，练舞效率翻倍</div>
+    </div>
+  </div>
+</div>
+
+<svg class="wave" viewBox="0 0 1440 120" preserveAspectRatio="none" style="height:80px">
+  <defs><linearGradient id="wg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8B5CF6" stop-opacity=".15"/><stop offset="50%" stop-color="#EC4899" stop-opacity=".12"/><stop offset="100%" stop-color="#F97316" stop-opacity=".1"/></linearGradient></defs>
+  <path d="M0,60 C360,120 720,0 1080,60 C1260,90 1380,40 1440,60 L1440,120 L0,120Z" fill="url(#wg)"/>
+</svg>
+</body>
+</html>
