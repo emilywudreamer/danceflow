@@ -363,11 +363,9 @@ async function generateShareImage() {
     const scoreSection = document.querySelector('.score-section');
     const origScoreHTML = scoreSection.innerHTML;
     const pct = d.total;
-    const gradDeg = Math.round(pct / 100 * 360);
     scoreSection.innerHTML = `
-      <div style="width:160px;height:160px;border-radius:50%;border:8px solid;border-image:linear-gradient(135deg,#8B5CF6,#EC4899) 1;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative">
-        <div style="position:absolute;inset:0;border-radius:50%;border:8px solid transparent;background:linear-gradient(#F8F9FC,#F8F9FC) padding-box,conic-gradient(#8B5CF6,#EC4899 ${gradDeg}deg,#E5E7EB ${gradDeg}deg) border-box;"></div>
-        <span style="font-size:52px;font-weight:800;background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;position:relative;z-index:1">${pct}</span>
+      <div style="text-align:center;margin:0 auto;padding:16px 0">
+        <span style="font-size:72px;font-weight:800;background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1">${pct}</span>
       </div>
       <div style="font-size:15px;color:#6B6E7B;font-weight:600;text-align:center;margin-top:8px">综合评分</div>
       <div style="font-size:12px;color:#9B9EAB;margin-top:2px;text-align:center">满分 100 · 入门 40 · 进阶 70 · 专业 90</div>
