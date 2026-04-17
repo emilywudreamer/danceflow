@@ -594,11 +594,7 @@ let _skeletonAnimId = null;
 let _teacherFrames = null;
 let _studentFrames = null;
 let _mappedIndices = null;
-let _audioCtx = null;
-let _audioBuffer = null;
-let _audioSource = null;
-let _audioStartTime = 0;
-let _audioPauseOffset = 0;
+let _audioEl = null;
 let _playSpeed = 1;
 
 function initSkeleton(data) {
@@ -682,10 +678,8 @@ function toggleSkeletonPlay() {
     icon.textContent = 'play_arrow';
     if (_skeletonAnimId) cancelAnimationFrame(_skeletonAnimId);
     // Pause audio
-    if (_audioCtx && _audioSource) {
-      _audioPauseOffset = _audioCtx.currentTime - _audioStartTime;
-      try { _audioSource.stop(); } catch(e) {}
-      _audioSource = null;
+    if (_audioEl) {
+      _audioEl.pause();
     }
     return;
   }
@@ -697,6 +691,7 @@ function toggleSkeletonPlay() {
   const currentIdx = parseInt(slider.value);
   const currentTs = _teacherFrames[currentIdx] ? _teacherFrames[currentIdx].ts : 0;
   playAudioFrom(currentTs);
+  if (_audioEl) _audioEl.playbackRate = _playSpeed;
   
   let lastTime = 0;
   const fps = 10 * _playSpeed;
@@ -729,30 +724,23 @@ async function loadSkeletonAudio() {
       req.onsuccess = () => res(req.result); req.onerror = rej;
     });
     if (!teacherBlob) return;
-    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuf = await teacherBlob.arrayBuffer();
-    _audioBuffer = await _audioCtx.decodeAudioData(arrayBuf);
+    _audioEl = document.createElement('audio');
+    _audioEl.src = URL.createObjectURL(teacherBlob);
+    _audioEl.preload = 'auto';
+    // preservesPitch is well-supported on <audio> elements
+    _audioEl.preservesPitch = true;
+    if ('mozPreservesPitch' in _audioEl) _audioEl.mozPreservesPitch = true;
+    if ('webkitPreservesPitch' in _audioEl) _audioEl.webkitPreservesPitch = true;
   } catch(e) {
     console.warn('Skeleton audio load failed:', e);
   }
 }
 
 function playAudioFrom(timeSeconds) {
-  if (!_audioCtx || !_audioBuffer) return;
-  // Stop any existing source
-  if (_audioSource) {
-    try { _audioSource.stop(); } catch(e) {}
-  }
-  _audioSource = _audioCtx.createBufferSource();
-  _audioSource.buffer = _audioBuffer;
-  _audioSource.playbackRate.value = _playSpeed;
-  // Preserve pitch when slowing down (time stretch, not pitch shift)
-  if ('preservesPitch' in _audioSource) _audioSource.preservesPitch = true;
-  else if ('mozPreservesPitch' in _audioSource) _audioSource.mozPreservesPitch = true;
-  _audioSource.connect(_audioCtx.destination);
-  const offset = Math.min(timeSeconds, _audioBuffer.duration);
-  _audioSource.start(0, offset);
-  _audioStartTime = _audioCtx.currentTime - offset;
+  if (!_audioEl) return;
+  _audioEl.currentTime = timeSeconds;
+  _audioEl.playbackRate = _playSpeed;
+  _audioEl.play().catch(() => {});
 }
 
 function setPlaySpeed(speed, btn) {
@@ -769,8 +757,8 @@ function setPlaySpeed(speed, btn) {
     const slider = document.getElementById('frameSlider');
     const currentIdx = parseInt(slider.value);
     const currentTs = _teacherFrames[currentIdx] ? _teacherFrames[currentIdx].ts : 0;
-    // Restart audio at new speed (preservesPitch keeps it sounding normal)
-    if (_audioSource) { try { _audioSource.stop(); } catch(e) {} _audioSource = null; }
+    // Restart audio at new speed
+    if (_audioEl) { _audioEl.pause(); }
     playAudioFrom(currentTs);
     // Restart animation loop with new fps
     if (_skeletonAnimId) cancelAnimationFrame(_skeletonAnimId);
