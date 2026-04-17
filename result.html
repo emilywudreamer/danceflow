@@ -709,10 +709,10 @@ function toggleSkeletonPlay() {
   _skeletonPlaying = true;
   icon.textContent = 'pause';
   
-  // Start audio only at 1x speed (slow-mo sounds terrible)
+  // Start audio synced to skeleton
   const currentIdx = parseInt(slider.value);
   const currentTs = _teacherFrames[currentIdx] ? _teacherFrames[currentIdx].ts : 0;
-  if (_playSpeed === 1) playAudioFrom(currentTs);
+  playAudioFrom(currentTs);
   
   let lastTime = 0;
   const fps = 10 * _playSpeed;
@@ -762,6 +762,9 @@ function playAudioFrom(timeSeconds) {
   _audioSource = _audioCtx.createBufferSource();
   _audioSource.buffer = _audioBuffer;
   _audioSource.playbackRate.value = _playSpeed;
+  // Preserve pitch when slowing down (time stretch, not pitch shift)
+  if ('preservesPitch' in _audioSource) _audioSource.preservesPitch = true;
+  else if ('mozPreservesPitch' in _audioSource) _audioSource.mozPreservesPitch = true;
   _audioSource.connect(_audioCtx.destination);
   const offset = Math.min(timeSeconds, _audioBuffer.duration);
   _audioSource.start(0, offset);
@@ -782,9 +785,9 @@ function setPlaySpeed(speed, btn) {
     const slider = document.getElementById('frameSlider');
     const currentIdx = parseInt(slider.value);
     const currentTs = _teacherFrames[currentIdx] ? _teacherFrames[currentIdx].ts : 0;
-    // Audio: only play at 1x, mute at slow speeds
+    // Restart audio at new speed (preservesPitch keeps it sounding normal)
     if (_audioSource) { try { _audioSource.stop(); } catch(e) {} _audioSource = null; }
-    if (speed === 1) playAudioFrom(currentTs);
+    playAudioFrom(currentTs);
     // Restart animation loop with new fps
     if (_skeletonAnimId) cancelAnimationFrame(_skeletonAnimId);
     _skeletonPlaying = false;
