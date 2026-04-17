@@ -141,6 +141,57 @@
     </div>
   </div>
 
+  <!-- Keyframe Comparison (inline, after skeleton) -->
+  <div class="section-title">
+    <span class="material-symbols-rounded icon-gradient" style="font-size:24px">image_search</span>
+    关键帧对比
+  </div>
+  <div id="kfSection" style="width:100%;display:none">
+    <!-- Summary: always visible -->
+    <div id="kfSummary" style="background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(236,72,153,0.08));border-radius:16px;padding:16px 20px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <span class="material-symbols-rounded icon-gradient" style="font-size:18px">target</span>
+        重点改善部位
+      </div>
+      <div id="kfSummaryItems"></div>
+    </div>
+    <!-- Toggle button -->
+    <button id="kfToggle" onclick="toggleKfDetail()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border:1px solid #E5E6ED;border-radius:12px;background:#fff;color:#6B6E7B;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px;transition:all 0.2s">
+      <span class="material-symbols-rounded" style="font-size:18px" id="kfToggleIcon">expand_more</span>
+      展开逐帧对比
+    </button>
+    <!-- Detail: collapsed by default -->
+    <div id="kfDetail" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="kf-filter active" data-filter="all" onclick="setKfFilter('all',this)" style="font-size:12px;padding:5px 14px;border-radius:20px;border:1px solid #E5E6ED;background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;cursor:pointer;font-weight:500">全部</button>
+        <button class="kf-filter" data-filter="worst" onclick="setKfFilter('worst',this)" style="font-size:12px;padding:5px 14px;border-radius:20px;border:1px solid #E5E6ED;background:#fff;color:#6B6E7B;cursor:pointer;font-weight:500">差异最大</button>
+        <button class="kf-filter" data-filter="best" onclick="setKfFilter('best',this)" style="font-size:12px;padding:5px 14px;border-radius:20px;border:1px solid #E5E6ED;background:#fff;color:#6B6E7B;cursor:pointer;font-weight:500">表现最好</button>
+      </div>
+      <div id="kfFrames"></div>
+    </div>
+  </div>
+  <div id="kfLoading" style="text-align:center;padding:20px;font-size:13px;color:#9B9EAB">
+    <div style="width:32px;height:32px;border:3px solid rgba(139,92,246,0.15);border-top-color:#8B5CF6;border-radius:50%;animation:kfspin 0.8s linear infinite;margin:0 auto 8px"></div>
+    正在提取关键帧...
+  </div>
+  <style>
+    @keyframes kfspin{to{transform:rotate(360deg)}}
+    .kf-pair{background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);border-radius:14px;padding:10px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,0.04)}
+    .kf-pair-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;color:#6B6E7B}
+    .kf-pair-header .kf-time{font-weight:600;color:#8B5CF6}
+    .kf-pair-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+    .kf-pair-grid canvas{width:100%;border-radius:8px;background:#0A0E1A;aspect-ratio:9/16}
+    .kf-label{font-size:10px;color:#9B9EAB;text-align:center;margin-top:2px;font-weight:500}
+    .kf-tags{display:flex;flex-wrap:wrap;gap:4px}
+    .kf-tag{font-size:10px;padding:2px 8px;border-radius:16px;font-weight:600}
+    .kf-tag.high{background:rgba(239,68,68,0.1);color:#EF4444}
+    .kf-tag.medium{background:rgba(249,115,22,0.1);color:#F97316}
+    .kf-tag.low{background:rgba(16,185,129,0.1);color:#10B981}
+    .kf-summary-item{display:flex;align-items:center;gap:8px;font-size:12px;color:#374151;margin-bottom:6px}
+    .kf-summary-bar-bg{flex:1;height:5px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden}
+    .kf-summary-bar{height:100%;border-radius:3px;transition:width 0.8s ease}
+  </style>
+
   <!-- Share Button + Popup Menu -->
   <div class="btns" style="position:relative">
     <button class="btn-primary" onclick="toggleShareMenu()" id="shareBtn" style="flex:1">
@@ -538,6 +589,11 @@ let _skeletonAnimId = null;
 let _teacherFrames = null;
 let _studentFrames = null;
 let _mappedIndices = null;
+let _audioCtx = null;
+let _audioBuffer = null;
+let _audioSource = null;
+let _audioStartTime = 0;
+let _audioPauseOffset = 0;
 
 function initSkeleton(data) {
   if (!data.teacherFrames || !data.studentFrames) return;
@@ -546,11 +602,18 @@ function initSkeleton(data) {
   _teacherFrames = data.teacherFrames;
   _studentFrames = data.studentFrames;
   
-  // Build frame mapping (teacher frame → closest student frame)
+  // Build frame mapping using audio alignment when available
+  const align = data.audioAlign;
+  const hopSec = 512 / 22050;
   _mappedIndices = _teacherFrames.map((tf, i) => {
+    let targetTs = tf.ts;
+    if (align && align.used && align.tempoRatio) {
+      const timeOffset = (align.offset || 0) * hopSec;
+      targetTs = (tf.ts - timeOffset) * align.tempoRatio;
+    }
     let best = 0, bestDist = Infinity;
     for (let j = 0; j < _studentFrames.length; j++) {
-      const d = Math.abs(_studentFrames[j].ts - tf.ts);
+      const d = Math.abs(_studentFrames[j].ts - targetTs);
       if (d < bestDist) { bestDist = d; best = j; }
     }
     return best;
@@ -572,10 +635,20 @@ function initSkeleton(data) {
   
   slider.addEventListener('input', () => {
     drawSkeletonFrame(parseInt(slider.value));
-    if (_skeletonPlaying) toggleSkeletonPlay(); // pause on manual scrub
+    if (_skeletonPlaying) {
+      toggleSkeletonPlay(); // pause on manual scrub
+    }
+    // Seek audio to scrubbed position (will play on next play)
+    const scrubIdx = parseInt(slider.value);
+    if (_teacherFrames[scrubIdx]) {
+      _audioPauseOffset = _teacherFrames[scrubIdx].ts;
+    }
   });
   
   drawSkeletonFrame(0);
+
+  // Load audio from teacher video for skeleton playback
+  loadSkeletonAudio();
 }
 
 function drawSkeletonFrame(idx) {
@@ -589,7 +662,10 @@ function drawSkeletonFrame(idx) {
   const sLms = _studentFrames[sIdx].landmarks;
   const ts = _teacherFrames[idx].ts;
   
-  Visualizer.drawFrame(canvas, tLms, sLms);
+  // Normalize both poses: center on hip midpoint, scale torso to match
+  const normT = normalizePose(tLms);
+  const normS = normalizePoseToRef(sLms, tLms);
+  Visualizer.drawFrame(canvas, normT, normS);
   label.textContent = `${ts.toFixed(1)}s / ${_teacherFrames[_teacherFrames.length-1].ts.toFixed(1)}s`;
 }
 
@@ -601,14 +677,25 @@ function toggleSkeletonPlay() {
     _skeletonPlaying = false;
     icon.textContent = 'play_arrow';
     if (_skeletonAnimId) cancelAnimationFrame(_skeletonAnimId);
+    // Pause audio
+    if (_audioCtx && _audioSource) {
+      _audioPauseOffset = _audioCtx.currentTime - _audioStartTime;
+      try { _audioSource.stop(); } catch(e) {}
+      _audioSource = null;
+    }
     return;
   }
   
   _skeletonPlaying = true;
   icon.textContent = 'pause';
   
+  // Start audio from current frame position
+  const currentIdx = parseInt(slider.value);
+  const currentTs = _teacherFrames[currentIdx] ? _teacherFrames[currentIdx].ts : 0;
+  playAudioFrom(currentTs);
+  
   let lastTime = 0;
-  const fps = 10; // playback at 10fps
+  const fps = 10;
   const interval = 1000 / fps;
   
   function animate(time) {
@@ -616,7 +703,11 @@ function toggleSkeletonPlay() {
     if (time - lastTime >= interval) {
       lastTime = time;
       let idx = parseInt(slider.value) + 1;
-      if (idx >= _teacherFrames.length) idx = 0; // loop
+      if (idx >= _teacherFrames.length) {
+        idx = 0;
+        // Restart audio from beginning on loop
+        playAudioFrom(0);
+      }
       slider.value = idx;
       drawSkeletonFrame(idx);
     }
@@ -625,8 +716,254 @@ function toggleSkeletonPlay() {
   _skeletonAnimId = requestAnimationFrame(animate);
 }
 
+async function loadSkeletonAudio() {
+  try {
+    const db = await openDB();
+    const teacherBlob = await new Promise((res, rej) => {
+      const tx = db.transaction('videos', 'readonly');
+      const req = tx.objectStore('videos').get('teacher');
+      req.onsuccess = () => res(req.result); req.onerror = rej;
+    });
+    if (!teacherBlob) return;
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuf = await teacherBlob.arrayBuffer();
+    _audioBuffer = await _audioCtx.decodeAudioData(arrayBuf);
+  } catch(e) {
+    console.warn('Skeleton audio load failed:', e);
+  }
+}
+
+function playAudioFrom(timeSeconds) {
+  if (!_audioCtx || !_audioBuffer) return;
+  // Stop any existing source
+  if (_audioSource) {
+    try { _audioSource.stop(); } catch(e) {}
+  }
+  _audioSource = _audioCtx.createBufferSource();
+  _audioSource.buffer = _audioBuffer;
+  _audioSource.connect(_audioCtx.destination);
+  const offset = Math.min(timeSeconds, _audioBuffer.duration);
+  _audioSource.start(0, offset);
+  _audioStartTime = _audioCtx.currentTime - offset;
+}
+
+
+// ─── Pose Normalization ─────────────────────────────────────────
+function _hipMid(lms) {
+  const lh = lms[23], rh = lms[24];
+  if (!lh || !rh) return { x: 0.5, y: 0.5 };
+  return { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+}
+function _torsoHeight(lms) {
+  // Distance from hip midpoint to shoulder midpoint
+  const hm = _hipMid(lms);
+  const ls = lms[11], rs = lms[12];
+  if (!ls || !rs) return 0.3;
+  const sm = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+  return Math.sqrt((hm.x - sm.x) ** 2 + (hm.y - sm.y) ** 2) || 0.3;
+}
+function normalizePose(lms) {
+  // Center on hip midpoint at (0.5, 0.55), scale torso to 0.25
+  const hm = _hipMid(lms);
+  const th = _torsoHeight(lms);
+  const scale = 0.25 / th;
+  const cx = 0.5, cy = 0.55;
+  return lms.map(l => ({
+    x: (l.x - hm.x) * scale + cx,
+    y: (l.y - hm.y) * scale + cy,
+    z: l.z || 0,
+    visibility: l.visibility || 0
+  }));
+}
+function normalizePoseToRef(lms, refLms) {
+  // Normalize student pose using teacher's hip center as anchor
+  const hm = _hipMid(lms);
+  const th = _torsoHeight(lms);
+  const refTh = _torsoHeight(refLms);
+  const scale = 0.25 / th; // same target torso size
+  const cx = 0.5, cy = 0.55;
+  return lms.map(l => ({
+    x: (l.x - hm.x) * scale + cx,
+    y: (l.y - hm.y) * scale + cy,
+    z: l.z || 0,
+    visibility: l.visibility || 0
+  }));
+}
 
 loadAndRender();
+
+// ─── Keyframe Comparison (inline) ────────────────────────────────
+const KF_LANDMARK_NAMES={0:'鼻子',11:'左肩',12:'右肩',13:'左肘',14:'右肘',15:'左手腕',16:'右手腕',23:'左髀',24:'右髀',25:'左膝',26:'右膝',27:'左脚踝',28:'右脚踝'};
+const KF_JOINTS=Object.keys(KF_LANDMARK_NAMES).map(Number);
+let _kfAllPairs=[];
+let _kfFilter='all';
+let _kfDetailOpen=false;
+
+function toggleKfDetail(){
+  _kfDetailOpen=!_kfDetailOpen;
+  document.getElementById('kfDetail').style.display=_kfDetailOpen?'block':'none';
+  document.getElementById('kfToggleIcon').textContent=_kfDetailOpen?'expand_less':'expand_more';
+  document.getElementById('kfToggle').innerHTML=`<span class="material-symbols-rounded" style="font-size:18px" id="kfToggleIcon">${_kfDetailOpen?'expand_less':'expand_more'}</span>${_kfDetailOpen?'收起逐帧对比':'展开逐帧对比'}`;
+  if(_kfDetailOpen&&_kfAllPairs.length)renderKfFrames(_kfAllPairs);
+}
+
+function setKfFilter(f,btn){
+  _kfFilter=f;
+  document.querySelectorAll('.kf-filter').forEach(b=>{
+    b.style.background='#fff';b.style.color='#6B6E7B';
+  });
+  btn.style.background='linear-gradient(135deg,#8B5CF6,#EC4899)';btn.style.color='#fff';
+  renderKfFrames(_kfAllPairs);
+}
+
+function kfJointDiffs(tLms,sLms){
+  const diffs=[];
+  for(const ji of KF_JOINTS){
+    const t=tLms[ji],s=sLms[ji];
+    if(!t||!s)continue;
+    if((t.visibility||0)<0.5||(s.visibility||0)<0.5)continue;
+    const dist=Math.sqrt((t.x-s.x)**2+(t.y-s.y)**2);
+    diffs.push({joint:ji,name:KF_LANDMARK_NAMES[ji],dist});
+  }
+  diffs.sort((a,b)=>b.dist-a.dist);
+  return diffs;
+}
+
+async function extractFrame(blob,ts){
+  const url=URL.createObjectURL(blob);
+  const v=document.createElement('video');
+  v.muted=true;v.playsInline=true;v.src=url;
+  await new Promise((r,j)=>{v.onloadeddata=r;v.onerror=j;v.load()});
+  v.currentTime=ts;
+  await new Promise(r=>{v.onseeked=r});
+  const c=document.createElement('canvas');
+  c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  URL.revokeObjectURL(url);
+  return c;
+}
+
+function drawKfCanvas(canvas,srcCanvas,landmarks,diffMarkers,isTeacher){
+  const ctx=canvas.getContext('2d');
+  const w=canvas.width,h=canvas.height;
+  ctx.drawImage(srcCanvas,0,0,srcCanvas.width,srcCanvas.height,0,0,w,h);
+  ctx.fillStyle='rgba(0,0,0,0.12)';ctx.fillRect(0,0,w,h);
+  if(!landmarks)return;
+  const CONNS=Visualizer.CONNECTIONS;
+  const color=isTeacher?'rgba(108,59,170,0.7)':'rgba(58,190,255,0.7)';
+  ctx.strokeStyle=color;ctx.lineWidth=2;
+  for(const[a,b]of CONNS){
+    if(a>=landmarks.length||b>=landmarks.length)continue;
+    const la=landmarks[a],lb=landmarks[b];
+    if((la.visibility||0)<0.3||(lb.visibility||0)<0.3)continue;
+    ctx.beginPath();ctx.moveTo(la.x*w,la.y*h);ctx.lineTo(lb.x*w,lb.y*h);ctx.stroke();
+  }
+  ctx.fillStyle=isTeacher?'rgba(180,130,255,1)':'rgba(100,210,255,1)';
+  for(const l of landmarks){if((l.visibility||0)<0.3)continue;ctx.beginPath();ctx.arc(l.x*w,l.y*h,3,0,Math.PI*2);ctx.fill();}
+  if(!isTeacher&&diffMarkers){
+    for(const m of diffMarkers.slice(0,5)){
+      const s=landmarks[m.joint];if(!s||(s.visibility||0)<0.3)continue;
+      ctx.strokeStyle='#EF4444';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(s.x*w,s.y*h,8,0,Math.PI*2);ctx.stroke();
+      ctx.font='bold 9px sans-serif';ctx.fillStyle='#EF4444';
+      ctx.fillText(m.name,s.x*w+10,s.y*h-5);
+    }
+  }
+}
+
+function buildKfSummary(pairs){
+  const freq={};
+  for(const p of pairs)for(const d of p.diffs.slice(0,5))freq[d.name]=(freq[d.name]||0)+1;
+  const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+  if(!sorted.length)return;
+  const el=document.getElementById('kfSummaryItems');
+  el.innerHTML=sorted.slice(0,6).map(([name,count])=>{
+    const pct=Math.round(count/pairs.length*100);
+    const color=pct>=60?'#EF4444':pct>=30?'#F97316':'#10B981';
+    return `<div class="kf-summary-item"><span style="min-width:50px;font-weight:600">${name}</span><div class="kf-summary-bar-bg"><div class="kf-summary-bar" style="width:${pct}%;background:${color}"></div></div><span style="min-width:36px;text-align:right;color:${color};font-weight:600">${pct}%</span></div>`;
+  }).join('');
+}
+
+function renderKfFrames(pairs){
+  const container=document.getElementById('kfFrames');
+  container.innerHTML='';
+  let filtered=pairs;
+  if(_kfFilter==='worst')filtered=[...pairs].sort((a,b)=>b.totalDiff-a.totalDiff).slice(0,6);
+  else if(_kfFilter==='best')filtered=[...pairs].sort((a,b)=>a.totalDiff-b.totalDiff).slice(0,6);
+  for(let i=0;i<filtered.length;i++){
+    const p=filtered[i];
+    const lvl=p.totalDiff>0.5?'high':p.totalDiff>0.25?'medium':'low';
+    const lbl=lvl==='high'?'差异较大':lvl==='medium'?'有差异':'较接近';
+    const el=document.createElement('div');el.className='kf-pair';
+    el.innerHTML=`<div class="kf-pair-header"><span class="kf-time">${p.ts.toFixed(1)}s</span><span class="kf-tag ${lvl}">${lbl}</span></div><div class="kf-pair-grid"><div><canvas id="kftc${i}" width="360" height="640"></canvas><div class="kf-label">老师</div></div><div><canvas id="kfsc${i}" width="360" height="640"></canvas><div class="kf-label">你</div></div></div><div class="kf-tags" id="kftags${i}"></div>`;
+    container.appendChild(el);
+    requestAnimationFrame(()=>{
+      drawKfCanvas(document.getElementById('kftc'+i),p.tCanvas,p.tLms,null,true);
+      drawKfCanvas(document.getElementById('kfsc'+i),p.sCanvas,p.sLms,p.diffs,false);
+      document.getElementById('kftags'+i).innerHTML=p.diffs.slice(0,4).map(d=>{const l=d.dist>0.08?'high':d.dist>0.04?'medium':'low';return `<span class="kf-tag ${l}">${d.name}</span>`;}).join('');
+    });
+  }
+}
+
+async function initKeyframeComparison(){
+  const loadEl=document.getElementById('kfLoading');
+  const sectionEl=document.getElementById('kfSection');
+  try{
+    const db=await openDB();
+    const [tBlob,sBlob,res]=await Promise.all(['teacher','student','result'].map(k=>new Promise((r,j)=>{const tx=db.transaction('videos','readonly');const rq=tx.objectStore('videos').get(k);rq.onsuccess=()=>r(rq.result);rq.onerror=j;})));
+    if(!tBlob||!sBlob||!res||!res.teacherFrames||!res.studentFrames||res.teacherFrames.length<3){
+      loadEl.innerHTML='<div style="font-size:13px;color:#9B9EAB">完成评分后可查看关键帧对比</div>';return;
+    }
+    const tFrames=res.teacherFrames,sFrames=res.studentFrames;
+    // Map frames using audio alignment when available
+    const kfAlign=res.audioAlign;
+    const kfHopSec=512/22050;
+    const mapped=tFrames.map((tf,i)=>{
+      let targetTs=tf.ts;
+      if(kfAlign&&kfAlign.used&&kfAlign.tempoRatio){
+        const tOff=(kfAlign.offset||0)*kfHopSec;
+        targetTs=(tf.ts-tOff)*kfAlign.tempoRatio;
+      }
+      let best=0,bd=Infinity;
+      for(let j=0;j<sFrames.length;j++){const d=Math.abs(sFrames[j].ts-targetTs);if(d<bd){bd=d;best=j;}}
+      return{tIdx:i,sIdx:best,ts:tf.ts};
+    });
+    // Compute diffs
+    const withDiffs=mapped.map(p=>{
+      const tLms={},sLms={};
+      for(const ji of KF_JOINTS){tLms[ji]=tFrames[p.tIdx].landmarks[ji];sLms[ji]=sFrames[p.sIdx].landmarks[ji];}
+      const diffs=kfJointDiffs(tLms,sLms);
+      return{...p,diffs,totalDiff:diffs.reduce((s,d)=>s+d.dist,0)};
+    });
+    // Select keyframes: top 60% by diff + 40% evenly
+    withDiffs.sort((a,b)=>b.totalDiff-a.totalDiff);
+    const n=Math.min(12,withDiffs.length);
+    const topN=Math.ceil(n*0.6),evenN=n-topN;
+    const sel=new Set();
+    for(let i=0;i<Math.min(topN,withDiffs.length);i++)sel.add(withDiffs[i].tIdx);
+    const step=Math.floor(tFrames.length/(evenN+1));
+    for(let i=1;i<=evenN;i++){const idx=i*step;if(idx<tFrames.length)sel.add(idx);}
+    const indices=[...sel].sort((a,b)=>a-b);
+    // Extract video frames
+    const pairs=[];
+    for(let k=0;k<indices.length;k++){
+      const tIdx=indices[k];
+      const info=withDiffs.find(w=>w.tIdx===tIdx)||{tIdx,sIdx:tIdx,ts:tFrames[tIdx].ts,diffs:[],totalDiff:0};
+      const [tc,sc]=await Promise.all([extractFrame(tBlob,tFrames[tIdx].ts),extractFrame(sBlob,sFrames[info.sIdx].ts)]);
+      pairs.push({ts:info.ts,tCanvas:tc,sCanvas:sc,tLms:tFrames[tIdx].landmarks,sLms:sFrames[info.sIdx].landmarks,diffs:info.diffs,totalDiff:info.totalDiff});
+    }
+    _kfAllPairs=pairs;
+    buildKfSummary(pairs);
+    loadEl.style.display='none';
+    sectionEl.style.display='block';
+  }catch(e){
+    console.error('KF error:',e);
+    loadEl.innerHTML='<div style="font-size:13px;color:#9B9EAB">关键帧对比加载失败</div>';
+  }
+}
+
+// Start keyframe analysis after main render
+setTimeout(initKeyframeComparison,500);
 </script>
 </body>
 </html>
