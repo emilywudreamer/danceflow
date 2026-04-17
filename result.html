@@ -135,6 +135,13 @@
         <span class="material-symbols-rounded" style="font-size:20px" id="playIcon">play_arrow</span>
       </button>
     </div>
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap" id="speedRow">
+      <button class="speed-btn" data-speed="0.25" onclick="setPlaySpeed(0.25,this)" style="font-size:11px;padding:4px 10px;border-radius:16px;border:1px solid #E5E6ED;background:#fff;color:#6B6E7B;cursor:pointer;font-weight:600">0.25x</button>
+      <button class="speed-btn" data-speed="0.5" onclick="setPlaySpeed(0.5,this)" style="font-size:11px;padding:4px 10px;border-radius:16px;border:1px solid #E5E6ED;background:#fff;color:#6B6E7B;cursor:pointer;font-weight:600">0.5x</button>
+      <button class="speed-btn active" data-speed="1" onclick="setPlaySpeed(1,this)" style="font-size:11px;padding:4px 10px;border-radius:16px;border:1px solid transparent;background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;cursor:pointer;font-weight:600">1x</button>
+      <button class="speed-btn" data-speed="1.5" onclick="setPlaySpeed(1.5,this)" style="font-size:11px;padding:4px 10px;border-radius:16px;border:1px solid #E5E6ED;background:#fff;color:#6B6E7B;cursor:pointer;font-weight:600">1.5x</button>
+      <button class="speed-btn" data-speed="2" onclick="setPlaySpeed(2,this)" style="font-size:11px;padding:4px 10px;border-radius:16px;border:1px solid #E5E6ED;background:#fff;color:#6B6E7B;cursor:pointer;font-weight:600">2x</button>
+    </div>
     <div style="display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:12px">
       <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:3px;background:rgba(108,59,170,0.9);border-radius:2px"></span><span style="color:#9B9EAB">老师</span></span>
       <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:3px;background:rgba(58,190,255,0.9);border-radius:2px"></span><span style="color:#9B9EAB">你</span></span>
@@ -594,6 +601,7 @@ let _audioBuffer = null;
 let _audioSource = null;
 let _audioStartTime = 0;
 let _audioPauseOffset = 0;
+let _playSpeed = 1;
 
 function initSkeleton(data) {
   if (!data.teacherFrames || !data.studentFrames) return;
@@ -709,7 +717,7 @@ function toggleSkeletonPlay() {
   playAudioFrom(currentTs);
   
   let lastTime = 0;
-  const fps = 10;
+  const fps = 10 * _playSpeed;
   const interval = 1000 / fps;
   
   function animate(time) {
@@ -755,10 +763,35 @@ function playAudioFrom(timeSeconds) {
   }
   _audioSource = _audioCtx.createBufferSource();
   _audioSource.buffer = _audioBuffer;
+  _audioSource.playbackRate.value = _playSpeed;
   _audioSource.connect(_audioCtx.destination);
   const offset = Math.min(timeSeconds, _audioBuffer.duration);
   _audioSource.start(0, offset);
   _audioStartTime = _audioCtx.currentTime - offset;
+}
+
+function setPlaySpeed(speed, btn) {
+  _playSpeed = speed;
+  // Update button styles
+  document.querySelectorAll('.speed-btn').forEach(b => {
+    b.style.background = '#fff'; b.style.color = '#6B6E7B'; b.style.borderColor = '#E5E6ED';
+  });
+  btn.style.background = 'linear-gradient(135deg,#8B5CF6,#EC4899)';
+  btn.style.color = '#fff'; btn.style.borderColor = 'transparent';
+  // If currently playing, restart with new speed
+  if (_skeletonPlaying) {
+    // Get current position
+    const slider = document.getElementById('frameSlider');
+    const currentIdx = parseInt(slider.value);
+    const currentTs = _teacherFrames[currentIdx] ? _teacherFrames[currentIdx].ts : 0;
+    // Restart audio at new speed
+    if (_audioSource) { try { _audioSource.stop(); } catch(e) {} _audioSource = null; }
+    playAudioFrom(currentTs);
+    // Restart animation loop with new fps
+    if (_skeletonAnimId) cancelAnimationFrame(_skeletonAnimId);
+    _skeletonPlaying = false;
+    toggleSkeletonPlay();
+  }
 }
 
 
