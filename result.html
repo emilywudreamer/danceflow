@@ -709,10 +709,10 @@ function toggleSkeletonPlay() {
   _skeletonPlaying = true;
   icon.textContent = 'pause';
   
-  // Start audio from current frame position
+  // Start audio only at 1x speed (slow-mo sounds terrible)
   const currentIdx = parseInt(slider.value);
   const currentTs = _teacherFrames[currentIdx] ? _teacherFrames[currentIdx].ts : 0;
-  playAudioFrom(currentTs);
+  if (_playSpeed === 1) playAudioFrom(currentTs);
   
   let lastTime = 0;
   const fps = 10 * _playSpeed;
@@ -782,9 +782,9 @@ function setPlaySpeed(speed, btn) {
     const slider = document.getElementById('frameSlider');
     const currentIdx = parseInt(slider.value);
     const currentTs = _teacherFrames[currentIdx] ? _teacherFrames[currentIdx].ts : 0;
-    // Restart audio at new speed
+    // Audio: only play at 1x, mute at slow speeds
     if (_audioSource) { try { _audioSource.stop(); } catch(e) {} _audioSource = null; }
-    playAudioFrom(currentTs);
+    if (speed === 1) playAudioFrom(currentTs);
     // Restart animation loop with new fps
     if (_skeletonAnimId) cancelAnimationFrame(_skeletonAnimId);
     _skeletonPlaying = false;
