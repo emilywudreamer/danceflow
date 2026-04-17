@@ -353,47 +353,50 @@ async function generateShareImage() {
   try {
     const container = document.querySelector('.container') || document.body;
     
-    // === PRE-SCREENSHOT: modify page directly ===
+    // === PRE-SCREENSHOT: replace SVG rings with CSS-only elements ===
+    // html2canvas can't render SVG stroke-dashoffset, so we overlay plain HTML
     
-    // 1. Force score number (in case animation hasn't finished)
-    const mainScore = document.getElementById('mainScore');
-    const origScore = mainScore ? mainScore.textContent : '';
-    if (mainScore && _shareData) mainScore.textContent = _shareData.total;
+    const d = _shareData;
+    if (!d) { showToast('评分数据未加载'); return; }
     
-    // 2. Force main ring
-    const mainRing = document.getElementById('mainRing');
-    const origRingOffset = mainRing ? mainRing.style.strokeDashoffset : '';
-    const origRingTransition = mainRing ? mainRing.style.transition : '';
-    if (mainRing && _shareData) {
-      const circ = 2 * Math.PI * 70;
-      mainRing.style.transition = 'none';
-      mainRing.style.strokeDashoffset = String(circ * (1 - _shareData.total / 100));
-    }
+    // 1. Replace main score ring with a CSS gradient circle
+    const scoreSection = document.querySelector('.score-section');
+    const origScoreHTML = scoreSection.innerHTML;
+    const pct = d.total;
+    const gradDeg = Math.round(pct / 100 * 360);
+    scoreSection.innerHTML = `
+      <div style="width:180px;height:180px;border-radius:50%;background:conic-gradient(#8B5CF6 0deg,#EC4899 ${gradDeg}deg,#E5E7EB ${gradDeg}deg);display:flex;align-items:center;justify-content:center;margin:0 auto">
+        <div style="width:140px;height:140px;border-radius:50%;background:#F8F9FC;display:flex;align-items:center;justify-content:center">
+          <span style="font-size:48px;font-weight:800;background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${pct}</span>
+        </div>
+      </div>
+      <div style="font-size:15px;color:#6B6E7B;font-weight:600;text-align:center;margin-top:8px">综合评分</div>
+      <div style="font-size:12px;color:#9B9EAB;margin-top:2px;text-align:center">满分 100 · 入门 40 · 进阶 70 · 专业 90</div>
+      <div style="display:inline-flex;align-items:center;gap:4px;background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:600;margin-top:8px">
+        ★ 超过 ${Math.min(99,Math.max(10,Math.round(pct*0.9+5)))}% 的舞者
+      </div>`;
     
-    // 3. Force dimension values
-    const dimDefs = [
-      ['dimA','dimAv', _shareData?.accuracy],
-      ['dimExt','dimExtv', _shareData?.extension],
-      ['dimB','dimBv', _shareData?.fluency],
-      ['dimC','dimCv', _shareData?.rhythm]
+    // 2. Replace dimension rings with CSS circles
+    const dimsContainer = document.querySelector('.dims');
+    const origDimsHTML = dimsContainer.innerHTML;
+    const dimData = [
+      { label: '动作准确度', score: d.accuracy, color: '#8B5CF6', icon: '🎯' },
+      { label: '延展性', score: d.extension || 0, color: '#10B981', icon: '↗️' },
+      { label: '流畅度', score: d.fluency, color: '#EC4899', icon: '〰️' },
+      { label: '节奏感', score: d.rhythm, color: '#F97316', icon: '🎵' },
     ];
-    const dimCirc = 2 * Math.PI * 24;
-    const origDims = [];
-    dimDefs.forEach(([ringId, valId, score]) => {
-      const ring = document.getElementById(ringId);
-      const val = document.getElementById(valId);
-      origDims.push({
-        ringId, valId,
-        ringOffset: ring ? ring.style.strokeDashoffset : '',
-        ringTransition: ring ? ring.style.transition : '',
-        valText: val ? val.textContent : ''
-      });
-      if (ring && score != null) {
-        ring.style.transition = 'none';
-        ring.style.strokeDashoffset = String(dimCirc * (1 - score / 100));
-      }
-      if (val && score != null) val.textContent = String(score);
-    });
+    dimsContainer.innerHTML = dimData.map(dd => {
+      const deg = Math.round(dd.score / 100 * 360);
+      return `<div style="text-align:center;flex:1">
+        <div style="font-size:16px;margin-bottom:4px">${dd.icon}</div>
+        <div style="width:56px;height:56px;border-radius:50%;background:conic-gradient(${dd.color} 0deg,${dd.color} ${deg}deg,#E5E7EB ${deg}deg);display:flex;align-items:center;justify-content:center;margin:0 auto">
+          <div style="width:44px;height:44px;border-radius:50%;background:#F8F9FC;display:flex;align-items:center;justify-content:center">
+            <span style="font-size:16px;font-weight:700;color:${dd.color}">${dd.score}</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:#6B6E7B;margin-top:4px">${dd.label}</div>
+      </div>`;
+    }).join('');
     
     // 4. Hide elements we don't want in the image
     const hideEls = [];
@@ -449,14 +452,10 @@ async function generateShareImage() {
     // === POST-SCREENSHOT: restore everything ===
     watermark.remove();
     hideEls.forEach(({ el, orig }) => { el.style.display = orig; });
-    if (mainScore) mainScore.textContent = origScore;
-    if (mainRing) { mainRing.style.strokeDashoffset = origRingOffset; mainRing.style.transition = origRingTransition; }
-    origDims.forEach(({ ringId, valId, ringOffset, ringTransition, valText }) => {
-      const ring = document.getElementById(ringId);
-      const val = document.getElementById(valId);
-      if (ring) { ring.style.strokeDashoffset = ringOffset; ring.style.transition = ringTransition; }
-      if (val) val.textContent = valText;
-    });
+    scoreSection.innerHTML = origScoreHTML;
+    dimsContainer.innerHTML = origDimsHTML;
+    // Re-trigger animations
+    if (typeof renderScores === 'function' && _shareData) renderScores(_shareData);
     
     // === OUTPUT ===
     canvas.toBlob(async (blob) => {
