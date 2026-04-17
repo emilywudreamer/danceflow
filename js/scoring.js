@@ -372,6 +372,7 @@ const Scoring = {
       // v2 audio alignment metadata
       audioAlign: {
         used: usedAudioAlign,
+        offset: alignment ? alignment.offset : 0,
         tempoRatio: alignment ? alignment.tempoRatio : 1.0,
         confidence: alignment ? Math.round(alignment.confidence * 100) : 0,
         fallbackReason

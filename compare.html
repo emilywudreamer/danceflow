@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>关键帧对比 · DanceFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
+<link rel="stylesheet" href="css/style.css?v=9">
+<style>
+  body { background: linear-gradient(180deg,#FDF4FF 0%,#FAFAFA 40%,#FFF 100%); }
+
+  .compare-nav {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; margin-bottom: 16px;
+  }
+  .compare-nav a { color: #8B5CF6; font-size: 14px; font-weight: 600; text-decoration: none; }
+
+  .frame-pair {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  }
+  .frame-pair-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px; font-size: 13px; color: #6B6E7B;
+  }
+  .frame-pair-header .time { font-weight: 600; color: #8B5CF6; }
+  .frame-pair-videos {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-bottom: 8px;
+  }
+  .frame-pair-videos canvas {
+    width: 100%; border-radius: 8px; background: #0A0E1A;
+    aspect-ratio: 9/16;
+  }
+  .frame-label {
+    font-size: 11px; color: #9B9EAB; text-align: center;
+    margin-top: 4px; font-weight: 500;
+  }
+  .diff-tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .diff-tag {
+    font-size: 11px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 600;
+  }
+  .diff-tag.high { background: rgba(239,68,68,0.1); color: #EF4444; }
+  .diff-tag.medium { background: rgba(249,115,22,0.1); color: #F97316; }
+  .diff-tag.low { background: rgba(16,185,129,0.1); color: #10B981; }
+
+  .summary-card {
+    background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(236,72,153,0.08));
+    border-radius: 16px; padding: 20px; margin-bottom: 20px; width: 100%;
+  }
+  .summary-card h3 {
+    font-size: 15px; font-weight: 700; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .summary-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: #374151; margin-bottom: 8px;
+  }
+  .summary-bar-bg {
+    flex: 1; height: 6px; background: rgba(0,0,0,0.06); border-radius: 3px; overflow: hidden;
+  }
+  .summary-bar {
+    height: 100%; border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+
+  .filter-row {
+    display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; width: 100%;
+  }
+  .filter-btn {
+    font-size: 12px; padding: 6px 14px; border-radius: 20px;
+    border: 1px solid #E5E6ED; background: #fff; color: #6B6E7B;
+    cursor: pointer; font-weight: 500; transition: all 0.2s;
+  }
+  .filter-btn.active {
+    background: linear-gradient(135deg,#8B5CF6,#EC4899);
+    color: #fff; border-color: transparent;
+  }
+
+  .loading-compare {
+    text-align: center; padding: 60px 20px;
+  }
+  .loading-compare .spinner-ring {
+    width: 48px; height: 48px;
+    border: 4px solid rgba(139,92,246,0.15);
+    border-top-color: #8B5CF6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container" style="align-items:stretch;padding-bottom:40px">
+
+  <div class="compare-nav">
+    <a href="result.html">← 返回评分</a>
+  </div>
+
+  <h1 class="gradient-text-2" style="font-size:22px;font-weight:800;text-align:center;margin-bottom:4px">关键帧对比</h1>
+  <p style="text-align:center;color:#6B6E7B;font-size:13px;margin-bottom:20px">原视频逐帧对比，红色标注需改善部位</p>
+
+  <!-- Summary -->
+  <div class="summary-card" id="summaryCard" style="display:none">
+    <h3>
+      <span class="material-symbols-rounded icon-gradient" style="font-size:20px">target</span>
+      重点改善部位
+    </h3>
+    <div id="summaryItems"></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-row" id="filterRow">
+    <button class="filter-btn active" data-filter="all">全部</button>
+    <button class="filter-btn" data-filter="worst">差异最大</button>
+    <button class="filter-btn" data-filter="best">表现最好</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-compare" id="loadingCompare">
+    <div class="spinner-ring"></div>
+    <div style="font-size:15px;font-weight:600;color:#374151">正在提取关键帧...</div>
+    <div style="font-size:13px;color:#9B9EAB;margin-top:4px" id="loadingMsg">加载视频中</div>
+  </div>
+
+  <!-- Frame pairs container -->
+  <div id="framePairs" style="width:100%;display:none"></div>
+
+</div>
+
+<script src="js/utils.js?v=9"></script>
+<script type="module">
+import {PoseLandmarker,FilesetResolver} from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs';
+window.PoseLandmarker=PoseLandmarker;
+window.FilesetResolver=FilesetResolver;
+</script>
+<script>
+// ── Constants ───────────────────────────────────────────────────
+const LANDMARK_NAMES = {
+  0:'鼻子',11:'左肩',12:'右肩',13:'左肘',14:'右肘',
+  15:'左手腕',16:'右手腕',23:'左髋',24:'右髋',
+  25:'左膝',26:'右膝',27:'左脚踝',28:'右脚踝'
+};
+const KEY_JOINTS = Object.keys(LANDMARK_NAMES).map(Number);
+const CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8],
+  [9,10],[11,12],[11,13],[13,15],[15,17],[15,19],[15,21],
+  [12,14],[14,16],[16,18],[16,20],[16,22],
+  [11,23],[12,24],[23,24],[23,25],[25,27],[27,29],[27,31],
+  [24,26],[26,28],[28,30],[28,32]
+];
+
+// ── Video frame extraction with original pixels ─────────────────
+async function extractVideoFrame(videoBlob, timeSeconds) {
+  const url = URL.createObjectURL(videoBlob);
+  const video = document.createElement('video');
+  video.muted = true; video.playsInline = true; video.src = url;
+  await new Promise((res, rej) => { video.onloadeddata = res; video.onerror = rej; video.load(); });
+  video.currentTime = timeSeconds;
+  await new Promise(r => { video.onseeked = r; });
+  // Draw to canvas to get pixel data
+  const c = document.createElement('canvas');
+  c.width = video.videoWidth; c.height = video.videoHeight;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  URL.revokeObjectURL(url);
+  return { canvas: c, width: video.videoWidth, height: video.videoHeight };
+}
+
+// ── Compute joint diffs ─────────────────────────────────────────
+function computeJointDiffs(tLms, sLms) {
+  const diffs = [];
+  for (const ji of KEY_JOINTS) {
+    const t = tLms[ji], s = sLms[ji];
+    if (!t || !s) continue;
+    if ((t.visibility||0) < 0.5 || (s.visibility||0) < 0.5) continue;
+    const dist = Math.sqrt((t.x-s.x)**2 + (t.y-s.y)**2);
+    diffs.push({ joint: ji, name: LANDMARK_NAMES[ji], dist });
+  }
+  diffs.sort((a, b) => b.dist - a.dist);
+  return diffs;
+}
+
+// ── Draw frame with skeleton + diff markers on canvas ───────────
+function drawCompareCanvas(canvas, frameData, landmarks, diffMarkers, isTeacher) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  // Draw original video frame
+  ctx.drawImage(frameData.canvas, 0, 0, frameData.width, frameData.height, 0, 0, w, h);
+
+  // Semi-transparent overlay for readability
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillRect(0, 0, w, h);
+
+  if (!landmarks) return;
+
+  // Draw skeleton
+  const color = isTeacher ? 'rgba(108,59,170,0.8)' : 'rgba(58,190,255,0.8)';
+  const jointColor = isTeacher ? 'rgba(180,130,255,1)' : 'rgba(100,210,255,1)';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  for (const [a, b] of CONNECTIONS) {
+    if (a >= landmarks.length || b >= landmarks.length) continue;
+    const la = landmarks[a], lb = landmarks[b];
+    if ((la.visibility||0) < 0.3 || (lb.visibility||0) < 0.3) continue;
+    ctx.beginPath();
+    ctx.moveTo(la.x * w, la.y * h);
+    ctx.lineTo(lb.x * w, lb.y * h);
+    ctx.stroke();
+  }
+  ctx.fillStyle = jointColor;
+  for (const l of landmarks) {
+    if ((l.visibility||0) < 0.3) continue;
+    ctx.beginPath();
+    ctx.arc(l.x * w, l.y * h, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw diff markers (only on student side)
+  if (!isTeacher && diffMarkers) {
+    for (const m of diffMarkers.slice(0, 5)) {
+      const s = landmarks[m.joint];
+      if (!s || (s.visibility||0) < 0.3) continue;
+      const sx = s.x * w, sy = s.y * h;
+      // Red circle
+      ctx.strokeStyle = '#EF4444';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      // Label
+      ctx.font = 'bold 10px "PingFang SC","Noto Sans SC",sans-serif';
+      ctx.fillStyle = '#EF4444';
+      ctx.fillText(m.name, sx + 12, sy - 6);
+    }
+  }
+}
+
+// ── Main ────────────────────────────────────────────────────────
+let allFramePairData = [];
+let currentFilter = 'all';
+
+async function run() {
+  const loadingEl = document.getElementById('loadingCompare');
+  const loadingMsg = document.getElementById('loadingMsg');
+  const pairsEl = document.getElementById('framePairs');
+
+  try {
+    // Wait for MediaPipe
+    let attempts = 0;
+    while ((!window.PoseLandmarker || !window.FilesetResolver) && attempts < 100) {
+      await new Promise(r => setTimeout(r, 200)); attempts++;
+    }
+    if (!window.PoseLandmarker) {
+      loadingMsg.textContent = 'MediaPipe 加载失败，请刷新';
+      return;
+    }
+
+    // Load videos from IndexedDB
+    loadingMsg.textContent = '读取视频...';
+    const db = await openDB();
+    const [teacherBlob, studentBlob, resultData] = await Promise.all([
+      new Promise((res, rej) => {
+        const tx = db.transaction('videos','readonly');
+        const req = tx.objectStore('videos').get('teacher');
+        req.onsuccess = () => res(req.result); req.onerror = rej;
+      }),
+      new Promise((res, rej) => {
+        const tx = db.transaction('videos','readonly');
+        const req = tx.objectStore('videos').get('student');
+        req.onsuccess = () => res(req.result); req.onerror = rej;
+      }),
+      new Promise((res, rej) => {
+        const tx = db.transaction('videos','readonly');
+        const req = tx.objectStore('videos').get('result');
+        req.onsuccess = () => res(req.result); req.onerror = rej;
+      })
+    ]);
+
+    if (!teacherBlob || !studentBlob) {
+      loadingMsg.textContent = '未找到视频，请返回上传页重新上传';
+      return;
+    }
+
+    // Use stored pose data if available
+    const teacherFrames = resultData?.teacherFrames;
+    const studentFrames = resultData?.studentFrames;
+    if (!teacherFrames || !studentFrames || teacherFrames.length < 3) {
+      loadingMsg.textContent = '未找到姿态数据，请先完成评分分析';
+      return;
+    }
+
+    // Pick keyframes: select frames with largest pose differences
+    loadingMsg.textContent = '选取关键帧...';
+    const mappedPairs = [];
+    for (let i = 0; i < teacherFrames.length; i++) {
+      let bestJ = 0, bestDist = Infinity;
+      for (let j = 0; j < studentFrames.length; j++) {
+        const d = Math.abs(studentFrames[j].ts - teacherFrames[i].ts);
+        if (d < bestDist) { bestDist = d; bestJ = j; }
+      }
+      mappedPairs.push({ tIdx: i, sIdx: bestJ, ts: teacherFrames[i].ts });
+    }
+
+    // Compute per-frame diff scores
+    const frameDiffs = mappedPairs.map(pair => {
+      const tLms = {}, sLms = {};
+      for (const ji of KEY_JOINTS) {
+        tLms[ji] = teacherFrames[pair.tIdx].landmarks[ji];
+        sLms[ji] = studentFrames[pair.sIdx].landmarks[ji];
+      }
+      const diffs = computeJointDiffs(tLms, sLms);
+      const totalDiff = diffs.reduce((s, d) => s + d.dist, 0);
+      return { ...pair, diffs, totalDiff };
+    });
+
+    // Select ~12 evenly-spaced keyframes, biased toward high-diff
+    frameDiffs.sort((a, b) => b.totalDiff - a.totalDiff);
+    const numKeyframes = Math.min(12, frameDiffs.length);
+    // Take top 60% by diff, rest evenly
+    const topCount = Math.ceil(numKeyframes * 0.6);
+    const evenCount = numKeyframes - topCount;
+    const selected = new Set();
+    for (let i = 0; i < Math.min(topCount, frameDiffs.length); i++) {
+      selected.add(frameDiffs[i].tIdx);
+    }
+    // Fill remaining evenly
+    const step = Math.floor(teacherFrames.length / (evenCount + 1));
+    for (let i = 1; i <= evenCount; i++) {
+      const idx = i * step;
+      if (idx < teacherFrames.length) selected.add(idx);
+    }
+
+    const keyframeIndices = [...selected].sort((a, b) => a - b);
+
+    // Extract actual video frames for each keyframe
+    loadingMsg.textContent = '提取原视频画面...';
+    allFramePairData = [];
+
+    for (let k = 0; k < keyframeIndices.length; k++) {
+      const tIdx = keyframeIndices[k];
+      const pair = frameDiffs.find(f => f.tIdx === tIdx) || { tIdx, sIdx: tIdx, ts: teacherFrames[tIdx].ts, diffs: [], totalDiff: 0 };
+      loadingMsg.textContent = `提取画面 ${k+1}/${keyframeIndices.length}`;
+
+      const [tFrame, sFrame] = await Promise.all([
+        extractVideoFrame(teacherBlob, teacherFrames[tIdx].ts),
+        extractVideoFrame(studentBlob, studentFrames[pair.sIdx].ts)
+      ]);
+
+      allFramePairData.push({
+        ts: pair.ts,
+        tIdx,
+        sIdx: pair.sIdx,
+        tFrame,
+        sFrame,
+        tLandmarks: teacherFrames[tIdx].landmarks,
+        sLandmarks: studentFrames[pair.sIdx].landmarks,
+        diffs: pair.diffs,
+        totalDiff: pair.totalDiff
+      });
+    }
+
+    // Build summary
+    buildSummary(allFramePairData);
+
+    // Render
+    loadingEl.style.display = 'none';
+    pairsEl.style.display = 'block';
+    renderFramePairs(allFramePairData);
+
+  } catch (err) {
+    console.error(err);
+    loadingMsg.textContent = '出错了: ' + err.message;
+  }
+}
+
+function buildSummary(pairs) {
+  const freq = {};
+  for (const p of pairs) {
+    for (const d of p.diffs.slice(0, 5)) {
+      freq[d.name] = (freq[d.name] || 0) + 1;
+    }
+  }
+  const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+  if (!sorted.length) return;
+
+  const card = document.getElementById('summaryCard');
+  const items = document.getElementById('summaryItems');
+  card.style.display = 'block';
+
+  const maxCount = sorted[0][1];
+  items.innerHTML = sorted.slice(0, 6).map(([name, count]) => {
+    const pct = Math.round(count / pairs.length * 100);
+    const color = pct >= 60 ? '#EF4444' : pct >= 30 ? '#F97316' : '#10B981';
+    return `<div class="summary-item">
+      <span style="min-width:56px;font-weight:600">${name}</span>
+      <div class="summary-bar-bg"><div class="summary-bar" style="width:${pct}%;background:${color}"></div></div>
+      <span style="min-width:40px;text-align:right;color:${color};font-weight:600">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderFramePairs(pairs) {
+  const container = document.getElementById('framePairs');
+  container.innerHTML = '';
+
+  let filtered = pairs;
+  if (currentFilter === 'worst') {
+    filtered = [...pairs].sort((a, b) => b.totalDiff - a.totalDiff).slice(0, 6);
+  } else if (currentFilter === 'best') {
+    filtered = [...pairs].sort((a, b) => a.totalDiff - b.totalDiff).slice(0, 6);
+  }
+
+  for (let i = 0; i < filtered.length; i++) {
+    const p = filtered[i];
+    const el = document.createElement('div');
+    el.className = 'frame-pair';
+
+    const diffLevel = p.totalDiff > 0.5 ? 'high' : p.totalDiff > 0.25 ? 'medium' : 'low';
+    const diffLabel = diffLevel === 'high' ? '差异较大' : diffLevel === 'medium' ? '有差异' : '较接近';
+
+    el.innerHTML = `
+      <div class="frame-pair-header">
+        <span class="time">${p.ts.toFixed(1)}s</span>
+        <span class="diff-tag ${diffLevel}">${diffLabel}</span>
+      </div>
+      <div class="frame-pair-videos">
+        <div>
+          <canvas id="tc${i}" width="360" height="640"></canvas>
+          <div class="frame-label">老师</div>
+        </div>
+        <div>
+          <canvas id="sc${i}" width="360" height="640"></canvas>
+          <div class="frame-label">你</div>
+        </div>
+      </div>
+      <div class="diff-tags" id="tags${i}"></div>
+    `;
+    container.appendChild(el);
+
+    // Draw canvases
+    requestAnimationFrame(() => {
+      const tc = document.getElementById('tc' + i);
+      const sc = document.getElementById('sc' + i);
+      drawCompareCanvas(tc, p.tFrame, p.tLandmarks, null, true);
+      drawCompareCanvas(sc, p.sFrame, p.sLandmarks, p.diffs, false);
+
+      // Diff tags
+      const tagsEl = document.getElementById('tags' + i);
+      tagsEl.innerHTML = p.diffs.slice(0, 4).map(d => {
+        const lvl = d.dist > 0.08 ? 'high' : d.dist > 0.04 ? 'medium' : 'low';
+        return `<span class="diff-tag ${lvl}">${d.name}</span>`;
+      }).join('');
+    });
+  }
+}
+
+// ── Filter buttons ──────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderFramePairs(allFramePairData);
+  });
+});
+
+run();
+</script>
+</body>
+</html>
