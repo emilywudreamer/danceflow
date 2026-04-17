@@ -381,8 +381,47 @@ const Scoring = {
       teacherDuration: Math.round(teacherDuration * 10) / 10,
       studentDuration: Math.round(studentDuration * 10) / 10,
       pairCount: mappedPairs.length,
-      // Frame mapping: [[teacherTs, studentTs], ...] for skeleton/keyframe use
-      frameMapping: mappedPairs.map(p => [p.teacherTime, p.studentTime])
+      // Full 1:1 mapping: alignedIndices[teacherIdx] = studentIdx
+      // Covers every teacher frame, interpolated from mappedPairs
+      alignedIndices: (function() {
+        // Build sparse map from mappedPairs
+        const sparseMap = new Map(); // teacherIdx → studentIdx
+        for (const p of mappedPairs) {
+          const tIdx = teacherFrames.indexOf(p.teacher);
+          const sIdx = studentFrames.indexOf(p.student);
+          if (tIdx >= 0 && sIdx >= 0) sparseMap.set(tIdx, sIdx);
+        }
+        // Fill every teacher frame by nearest known mapping
+        const result = new Array(teacherFrames.length);
+        const knownKeys = [...sparseMap.keys()].sort((a,b) => a - b);
+        if (knownKeys.length === 0) {
+          // Total fallback: linear mapping
+          for (let i = 0; i < teacherFrames.length; i++) {
+            result[i] = Math.min(Math.round(i * studentFrames.length / teacherFrames.length), studentFrames.length - 1);
+          }
+        } else {
+          for (let i = 0; i < teacherFrames.length; i++) {
+            if (sparseMap.has(i)) { result[i] = sparseMap.get(i); continue; }
+            // Find nearest known keys before and after
+            let lo = -1, hi = -1;
+            for (const k of knownKeys) {
+              if (k <= i) lo = k;
+              if (k >= i && hi < 0) hi = k;
+            }
+            if (lo >= 0 && hi >= 0 && lo !== hi) {
+              // Interpolate
+              const t = (i - lo) / (hi - lo);
+              result[i] = Math.round(sparseMap.get(lo) * (1 - t) + sparseMap.get(hi) * t);
+            } else if (lo >= 0) {
+              result[i] = sparseMap.get(lo);
+            } else {
+              result[i] = sparseMap.get(hi);
+            }
+            result[i] = Math.max(0, Math.min(result[i], studentFrames.length - 1));
+          }
+        }
+        return result;
+      })()
     };
   }
 };
