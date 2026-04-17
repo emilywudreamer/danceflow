@@ -121,14 +121,24 @@
   </div>
   <div class="timeline" id="timeline"></div>
 
-  <!-- Skeleton area -->
+  <!-- Skeleton Comparison -->
   <div class="section-title">
     <span class="material-symbols-rounded icon-gradient" style="font-size:24px">sprint</span>
     骨架对比
   </div>
-  <div class="coming-soon-bar">
-    <span class="material-symbols-rounded" style="font-size:18px">lock</span>
-    骨架叠加对比 · 即将开放
+  <div id="skeletonArea" style="display:none">
+    <canvas id="skeletonCanvas" width="400" height="500" style="width:100%;border-radius:12px;background:#0A0E1A"></canvas>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+      <span style="font-size:12px;color:#9B9EAB;white-space:nowrap" id="frameLabel">帧 1/100</span>
+      <input type="range" id="frameSlider" min="0" max="0" value="0" style="flex:1;accent-color:#8B5CF6">
+      <button id="playBtn" onclick="toggleSkeletonPlay()" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;border:none;border-radius:50%;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px">
+        <span class="material-symbols-rounded" style="font-size:20px" id="playIcon">play_arrow</span>
+      </button>
+    </div>
+    <div style="display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:12px">
+      <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:3px;background:rgba(108,59,170,0.9);border-radius:2px"></span><span style="color:#9B9EAB">老师</span></span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:12px;height:3px;background:rgba(58,190,255,0.9);border-radius:2px"></span><span style="color:#9B9EAB">你</span></span>
+    </div>
   </div>
 
   <!-- Share Button + Popup Menu -->
@@ -167,6 +177,7 @@
 
 <script src="js/utils.js?v=8"></script>
 <script src="js/visualizer.js?v=8"></script>
+<script src="js/visualizer.js?v=8"></script>
 <script>
 // openDB is now in js/utils.js?v=8
 
@@ -192,6 +203,7 @@ async function loadAndRender(){
     renderScores(data);
     renderAudioAlign(data);
     renderTimeline(data.segments);
+    initSkeleton(data);
   };
 }
 
@@ -517,6 +529,100 @@ function shareToWechat() {
   // Desktop fallback: generate image and prompt user
   showToast('生成长图后保存，打开微信分享 💬');
   generateShareImage();
+}
+
+
+// ─── Skeleton Comparison ────────────────────────────────────────
+let _skeletonPlaying = false;
+let _skeletonAnimId = null;
+let _teacherFrames = null;
+let _studentFrames = null;
+let _mappedIndices = null;
+
+function initSkeleton(data) {
+  if (!data.teacherFrames || !data.studentFrames) return;
+  if (data.teacherFrames.length < 2 || data.studentFrames.length < 2) return;
+  
+  _teacherFrames = data.teacherFrames;
+  _studentFrames = data.studentFrames;
+  
+  // Build frame mapping (teacher frame → closest student frame)
+  _mappedIndices = _teacherFrames.map((tf, i) => {
+    let best = 0, bestDist = Infinity;
+    for (let j = 0; j < _studentFrames.length; j++) {
+      const d = Math.abs(_studentFrames[j].ts - tf.ts);
+      if (d < bestDist) { bestDist = d; best = j; }
+    }
+    return best;
+  });
+  
+  const area = document.getElementById('skeletonArea');
+  const slider = document.getElementById('frameSlider');
+  const canvas = document.getElementById('skeletonCanvas');
+  
+  area.style.display = 'block';
+  slider.max = _teacherFrames.length - 1;
+  slider.value = 0;
+  
+  // Responsive canvas size
+  const containerWidth = canvas.parentElement.offsetWidth;
+  canvas.width = containerWidth * 2; // retina
+  canvas.height = Math.round(containerWidth * 1.25 * 2);
+  canvas.style.height = Math.round(containerWidth * 1.25) + 'px';
+  
+  slider.addEventListener('input', () => {
+    drawSkeletonFrame(parseInt(slider.value));
+    if (_skeletonPlaying) toggleSkeletonPlay(); // pause on manual scrub
+  });
+  
+  drawSkeletonFrame(0);
+}
+
+function drawSkeletonFrame(idx) {
+  const canvas = document.getElementById('skeletonCanvas');
+  const label = document.getElementById('frameLabel');
+  
+  if (!_teacherFrames || idx >= _teacherFrames.length) return;
+  
+  const tLms = _teacherFrames[idx].landmarks;
+  const sIdx = _mappedIndices[idx];
+  const sLms = _studentFrames[sIdx].landmarks;
+  const ts = _teacherFrames[idx].ts;
+  
+  Visualizer.drawFrame(canvas, tLms, sLms);
+  label.textContent = `${ts.toFixed(1)}s / ${_teacherFrames[_teacherFrames.length-1].ts.toFixed(1)}s`;
+}
+
+function toggleSkeletonPlay() {
+  const icon = document.getElementById('playIcon');
+  const slider = document.getElementById('frameSlider');
+  
+  if (_skeletonPlaying) {
+    _skeletonPlaying = false;
+    icon.textContent = 'play_arrow';
+    if (_skeletonAnimId) cancelAnimationFrame(_skeletonAnimId);
+    return;
+  }
+  
+  _skeletonPlaying = true;
+  icon.textContent = 'pause';
+  
+  let lastTime = 0;
+  const fps = 10; // playback at 10fps
+  const interval = 1000 / fps;
+  
+  function animate(time) {
+    if (!_skeletonPlaying) return;
+    if (time - lastTime >= interval) {
+      lastTime = time;
+      let idx = parseInt(slider.value) + 1;
+      if (idx >= _teacherFrames.length) idx = 0; // loop
+      slider.value = idx;
+      drawSkeletonFrame(idx);
+    }
+    _skeletonAnimId = requestAnimationFrame(animate);
+  }
+  _skeletonAnimId = requestAnimationFrame(animate);
 }
 
 
