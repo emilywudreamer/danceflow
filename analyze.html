@@ -118,6 +118,8 @@ async function run(){
     if(!teacherBlob||!studentBlob){
       showError('未找到视频文件，请返回上传页重新上传');return;
     }
+    // Read dance style
+    const danceStyle=await new Promise(r=>{const tx3=db.transaction('videos','readonly');const rq=tx3.objectStore('videos').get('danceStyle');rq.onsuccess=()=>r(rq.result||'general');rq.onerror=()=>r('general');});
 
     setProgress(5,0);
     const teacherFrames=await PoseExtractor.extractFromVideo(teacherBlob,8,(msg,p)=>{
@@ -162,12 +164,12 @@ async function run(){
     statusText.textContent='正在对比动作细节';
     statusIcon.textContent='search';
     await new Promise(r=>setTimeout(r,200));
-    const result=Scoring.compute(teacherFrames,studentFrames,alignment);
+    const result=Scoring.compute(teacherFrames,studentFrames,alignment,danceStyle);
 
     setProgress(90,2);
     await new Promise(r=>setTimeout(r,500));
 
-    const fullResult={...result,teacherFrames,studentFrames};
+    const fullResult={...result,teacherFrames,studentFrames,danceStyle};
     const tx2=db.transaction('videos','readwrite');
     tx2.objectStore('videos').put(fullResult,'result');
     tx2.oncomplete=()=>{

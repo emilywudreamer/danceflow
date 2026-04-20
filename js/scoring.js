@@ -25,6 +25,16 @@ const Scoring = {
     0.8, 0.8, 0.8, 0.8
   ],
 
+  // Dance style weight profiles: [accuracy, extension, fluency, rhythm]
+  STYLE_WEIGHTS: {
+    general: { accuracy: 0.50, extension: 0.20, fluency: 0.15, rhythm: 0.15, label: '通用' },
+    ballet:  { accuracy: 0.35, extension: 0.35, fluency: 0.15, rhythm: 0.15, label: '芭蕾/古典' },
+    hiphop:  { accuracy: 0.40, extension: 0.10, fluency: 0.15, rhythm: 0.35, label: '街舞/Hip-hop' },
+    latin:   { accuracy: 0.35, extension: 0.15, fluency: 0.30, rhythm: 0.20, label: '拉丁/恰恰' },
+    jazz:    { accuracy: 0.40, extension: 0.25, fluency: 0.20, rhythm: 0.15, label: '爵士/现代' },
+    kpop:    { accuracy: 0.50, extension: 0.15, fluency: 0.10, rhythm: 0.25, label: 'Kpop/编舞' },
+  },
+
   // ─── Helpers ──────────────────────────────────────────────────
   _mean(arr) {
     if (!arr.length) return 0;
@@ -252,7 +262,7 @@ const Scoring = {
   },
 
   // ─── Segment scoring ──────────────────────────────────────────
-  _computeSegments(mappedPairs, accPerFrame, extPerFrame, fluPerFrame, rhythmOverall) {
+  _computeSegments(mappedPairs, accPerFrame, extPerFrame, fluPerFrame, rhythmOverall, w) {
     const numPairs = mappedPairs.length;
     if (numPairs < 3) return [];
 
@@ -285,7 +295,7 @@ const Scoring = {
         extension: Math.round(segExt),
         fluency: Math.round(segFlu),
         rhythm: Math.round(segRhythm),
-        score: Math.round(segAcc * 0.5 + segExt * 0.2 + segFlu * 0.15 + segRhythm * 0.15)
+        score: Math.round(segAcc * w.accuracy + segExt * w.extension + segFlu * w.fluency + segRhythm * w.rhythm)
       });
     }
     return segments;
@@ -309,7 +319,7 @@ const Scoring = {
    * compute(teacherFrames, studentFrames, alignment?)
    *   alignment: result from AudioAlign.alignAudio (or null for DTW fallback)
    */
-  compute(teacherFrames, studentFrames, alignment) {
+  compute(teacherFrames, studentFrames, alignment, danceStyle) {
     let mappedPairs;
     let usedAudioAlign = false;
     let fallbackReason = null;
@@ -346,10 +356,11 @@ const Scoring = {
     }
 
     const ext = this._computeExtension(mappedPairs);
-    const total = acc.overall * 0.5 + ext.overall * 0.2 + flu.overall * 0.15 + rhythmResult.overall * 0.15;
+    const w = this.STYLE_WEIGHTS[danceStyle] || this.STYLE_WEIGHTS.general;
+    const total = acc.overall * w.accuracy + ext.overall * w.extension + flu.overall * w.fluency + rhythmResult.overall * w.rhythm;
 
     // Segments — independent per-segment 3-dim scoring
-    const segments = this._computeSegments(mappedPairs, acc.perFrame, ext.perFrame, flu.perFrame, rhythmResult.overall);
+    const segments = this._computeSegments(mappedPairs, acc.perFrame, ext.perFrame, flu.perFrame, rhythmResult.overall, w);
 
     // Effective comparison duration
     const effectiveDuration = mappedPairs.length > 1
@@ -381,6 +392,8 @@ const Scoring = {
       teacherDuration: Math.round(teacherDuration * 10) / 10,
       studentDuration: Math.round(studentDuration * 10) / 10,
       pairCount: mappedPairs.length,
+      danceStyle: danceStyle || 'general',
+      styleWeights: w,
       // Full 1:1 mapping: alignedIndices[teacherIdx] = studentIdx
       // Covers every teacher frame, interpolated from mappedPairs
       alignedIndices: (function() {

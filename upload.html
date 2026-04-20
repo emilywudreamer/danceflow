@@ -56,6 +56,22 @@
     </div>
   </label>
 
+  <!-- Dance Style Selector -->
+  <div style="margin-top:24px;width:100%">
+    <label style="font-size:14px;font-weight:600;color:#374151;display:block;margin-bottom:8px">
+      <span class="material-symbols-rounded" style="font-size:18px;vertical-align:middle;margin-right:4px">music_note</span>
+      舞种选择
+    </label>
+    <select id="danceStyle" style="width:100%;padding:12px 16px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;font-size:14px;color:#374151;appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22%236B6E7B%22><path d=%22M7 10l5 5 5-5z%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;cursor:pointer">
+      <option value="general">🎵 通用（默认）</option>
+      <option value="ballet">🩰 芭蕾 / 古典舞</option>
+      <option value="hiphop">🔥 街舞 / Hip-hop</option>
+      <option value="latin">💃 拉丁 / 恰恰</option>
+      <option value="jazz">✨ 爵士 / 现代舞</option>
+      <option value="kpop">🎤 Kpop / 编舞</option>
+    </select>
+  </div>
+
   <div style="margin-top:auto;padding:20px 0;width:100%">
     <button class="cta full-width disabled" id="startBtn">请先上传两段视频</button>
     <p id="statusMsg" style="font-size:13px;color:#9B9EAB;margin-top:12px;text-align:center"></p>
@@ -122,6 +138,7 @@ async function storeAndNavigate(){
   const store=tx.objectStore('videos');
   store.put(teacherFile,'teacher');
   store.put(studentFile,'student');
+  store.put(document.getElementById('danceStyle').value,'danceStyle');
   tx.oncomplete=()=>window.location.href='analyze.html';
 }
 
